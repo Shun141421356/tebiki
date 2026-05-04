@@ -94,10 +94,12 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
 .blk-h2 .bcont input{font-family:'Shippori Mincho',serif;font-size:18px;font-weight:500}
 .blk-h3 .bcont input{font-size:15px;font-weight:500;color:var(--ink2)}
 .blk-text .bcont textarea{font-size:14px}
-.blk-step .bcont{display:flex;gap:9px;align-items:flex-start}
+.blk-step .bcont{display:flex;flex-direction:column;gap:0}
+.blk-step .bcont .step-row{display:flex;gap:9px;align-items:flex-start}
+.blk-step .bcont .step-row textarea{font-size:14px;flex:1;border:none;background:transparent;outline:none;resize:none;line-height:1.65;font-family:'Zen Kaku Gothic New',sans-serif}
+.blk-step .step-extras{padding-left:33px;display:flex;flex-direction:column;gap:2px}
 .snum{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px;cursor:pointer;transition:transform .1s}
 .snum:hover{transform:scale(1.15)}
-.blk-step .bcont textarea{font-size:14px;flex:1;border:none;background:transparent;outline:none;resize:none;line-height:1.65;font-family:'Zen Kaku Gothic New',sans-serif}
 .blk-note .bcont{background:var(--warm-light);border-left:3px solid var(--warm);padding:9px 12px}
 .blk-note .bcont textarea{font-size:13px;color:var(--ink2)}
 /* ④ block image */
@@ -325,13 +327,7 @@ function collectBlocks(){
     const inp=el.querySelector('input,textarea');
     const imgEl=el.querySelector('.blk-img-wrap img');
     const refs=[...el.querySelectorAll('.ref-badge')].map(r=>r.dataset.refId);
-    return{
-      id:el.dataset.id,
-      type:el.dataset.type,
-      val:inp?inp.value:'',
-      img:imgEl?imgEl.src:'',   /* ① Base64画像をそのまま保存 */
-      refs                       /* ③ 参照ブロックIDリスト */
-    };
+    return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:'',img:imgEl?imgEl.src:'',refs};
   });
 }
 
@@ -390,25 +386,28 @@ function mkBlk(b){
     d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力...">${v}</textarea></div>${del}`;
   }else if(b.type==='step'){
     stepCnt++;
-    d.innerHTML=`${handle}<div class="bcont"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く...">${v}</textarea></div>${del}`;
+    /* step-row: 番号＋テキスト横並び / step-extras: 写真・参照は下に縦並び */
+    d.innerHTML=`${handle}<div class="bcont"><div class="step-row"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く...">${v}</textarea></div><div class="step-extras"></div></div>${del}`;
   }else if(b.type==='note'){
     d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点...">${v}</textarea></div>${del}`;
   }
 
-  /* ④ 写真エリア */
-  const bc=d.querySelector('.bcont');
-  const imgWrap=document.createElement('div');
+  /* ④ 写真・③ 参照の挿入先を決定 */
+  /* step は .step-extras に、その他は .bcont に追加 */
+  const extras=d.querySelector('.step-extras')||d.querySelector('.bcont');
+
   if(b.img){
+    const imgWrap=document.createElement('div');
     imgWrap.className='blk-img-wrap';
     imgWrap.innerHTML=`<img src="${b.img}"><button class="blk-img-del">×</button>`;
     imgWrap.querySelector('.blk-img-del').onclick=()=>{imgWrap.remove();schedSave()};
-    bc.appendChild(imgWrap);
+    extras.appendChild(imgWrap);
   }
   const addImgBtn=document.createElement('button');
   addImgBtn.className='blk-img-add';
   addImgBtn.innerHTML='📷 写真を追加';
   addImgBtn.onclick=()=>openBlkPhoto(d,addImgBtn);
-  bc.appendChild(addImgBtn);
+  extras.appendChild(addImgBtn);
 
   /* ③ 参照エリア */
   const refSec=document.createElement('div');refSec.className='ref-section';
@@ -417,7 +416,7 @@ function mkBlk(b){
   refAddBtn.className='ref-add-btn';refAddBtn.textContent='＋ 参照を追加';
   refAddBtn.onclick=()=>openRefPicker(d,refSec);
   refSec.appendChild(refAddBtn);
-  bc.appendChild(refSec);
+  extras.appendChild(refSec);
 
   const inp=d.querySelector('input,textarea');
   if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});if(inp.tagName==='TEXTAREA')ar(inp)}
