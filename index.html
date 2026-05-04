@@ -98,14 +98,14 @@ body{
 .bhandle svg{width:12px;height:12px;fill:var(--ink4)}
 .bcont{flex:1;min-width:0}
 .bcont input,.bcont textarea{width:100%;border:none;background:transparent;outline:none;resize:none;font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);line-height:1.65}
-.b-h2 .bcont input{font-family:'Shippori Mincho',serif;font-size:18px;font-weight:500}
-.b-h3 .bcont input{font-size:15px;font-weight:500;color:var(--ink2)}
-.b-text .bcont textarea{font-size:14px}
-.b-step .bcont{display:flex;gap:9px;align-items:flex-start}
+.blk-h2 .bcont input{font-family:'Shippori Mincho',serif;font-size:18px;font-weight:500}
+.blk-h3 .bcont input{font-size:15px;font-weight:500;color:var(--ink2)}
+.blk-text .bcont textarea{font-size:14px}
+.blk-step .bcont{display:flex;gap:9px;align-items:flex-start}
 .snum{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px}
-.b-step .bcont textarea{font-size:14px;flex:1;border:none;background:transparent;outline:none;resize:none;line-height:1.65;font-family:'Zen Kaku Gothic New',sans-serif}
-.b-note .bcont{background:var(--warm-light);border-left:3px solid var(--warm);padding:9px 12px}
-.b-note .bcont textarea{font-size:13px;color:var(--ink2)}
+.blk-step .bcont textarea{font-size:14px;flex:1;border:none;background:transparent;outline:none;resize:none;line-height:1.65;font-family:'Zen Kaku Gothic New',sans-serif}
+.blk-note .bcont{background:var(--warm-light);border-left:3px solid var(--warm);padding:9px 12px}
+.blk-note .bcont textarea{font-size:13px;color:var(--ink2)}
 .bdel{position:absolute;right:-2px;top:4px;width:22px;height:22px;border-radius:50%;background:var(--paper3);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;color:var(--ink3);line-height:1;transition:all .15s}
 .blk:hover .bdel{display:flex}
 .bdel:hover{background:var(--coral-light);color:var(--danger)}
@@ -327,25 +327,25 @@ function openManual(id){
 }
 
 let stepCnt=0;
-function renderBlocks(blocks){const area=document.getElementById('blocks');area.innerHTML='';stepCnt=0;blocks.forEach(b=>area.appendChild(mkBlk(b)));initDnD()}
-function addBlock(type){const id='b'+Date.now();const el=mkBlk({id,type,val:''});document.getElementById('blocks').appendChild(el);el.querySelector('input,textarea')?.focus();initDnD();schedSave()}
+function renderBlocks(blocks){const area=document.getElementById('blocks');area.innerHTML='';stepCnt=0;blocks.forEach(b=>area.appendChild(mkBlk(b)));initDnD();setTimeout(()=>area.querySelectorAll('textarea').forEach(el=>ar(el)),50)}
+function addBlock(type){const id='b'+Date.now();const el=mkBlk({id,type,val:''});document.getElementById('blocks').appendChild(el);initDnD();schedSave();setTimeout(()=>{const inp=el.querySelector('input,textarea');if(inp){ar(inp);inp.focus()}},10)}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function ar(el){el.style.height='auto';el.style.height=el.scrollHeight+'px'}
+function ar(el){if(!el)return;el.style.height='auto';el.style.height=Math.max(el.scrollHeight,24)+'px'}
 function renum(){let n=0;document.querySelectorAll('#blocks .blk[data-type="step"] .snum').forEach(e=>e.textContent=++n)}
 
 function mkBlk(b){
   const d=document.createElement('div');
-  d.className='blk b-'+b.type;d.dataset.id=b.id;d.dataset.type=b.type;
+  d.className='blk blk-'+b.type;d.dataset.id=b.id;d.dataset.type=b.type;
   const handle=`<div class="bhandle"><svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/></svg></div>`;
   const del=`<button class="bdel">×</button>`;
   const v=esc(b.val||'');
   if(b.type==='h2'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="見出し" value="${v}"></div>${del}`}
   else if(b.type==='h3'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="小見出し" value="${v}"></div>${del}`}
-  else if(b.type==='text'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力..." rows="2">${v}</textarea></div>${del}`}
-  else if(b.type==='step'){stepCnt++;d.innerHTML=`${handle}<div class="bcont"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く..." rows="2">${v}</textarea></div>${del}`}
-  else if(b.type==='note'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点..." rows="2">${v}</textarea></div>${del}`}
+  else if(b.type==='text'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力...">${v}</textarea></div>${del}`}
+  else if(b.type==='step'){stepCnt++;d.innerHTML=`${handle}<div class="bcont"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く...">${v}</textarea></div>${del}`}
+  else if(b.type==='note'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点...">${v}</textarea></div>${del}`}
   const inp=d.querySelector('input,textarea');
-  if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});ar(inp)}
+  if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});if(inp.tagName==='TEXTAREA')ar(inp)}
   d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
   return d;
 }
