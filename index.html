@@ -18,203 +18,105 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --ink:#2C2C2A;--ink2:#5F5E5A;--ink3:#888780;--ink4:#D3D1C7;
-  --paper:#F9F7F2;--paper2:#F1EFE8;--paper3:#E8E4DA;--paper4:#DDD9CF;
+  --paper:#F9F7F2;--paper2:#F1EFE8;--paper3:#E8E4DA;
   --accent:#0F6E56;--accent2:#1D9E75;--accent-light:#E1F5EE;
   --warm:#BA7517;--warm-light:#FAEEDA;
-  --coral:#993C1D;--coral-light:#FAECE7;
-  --danger:#A32D2D;
+  --coral:#993C1D;--coral-light:#FAECE7;--danger:#A32D2D;
   --safe-top:env(safe-area-inset-top,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);
 }
-html{height:100%;overflow:hidden}
+html,body{height:100%;overflow:hidden;background:var(--paper)}
 body{
-  font-family:'Zen Kaku Gothic New',sans-serif;
-  background:var(--paper);color:var(--ink);
-  height:100%;overflow:hidden;
-  display:flex;flex-direction:column;
-  max-width:430px;margin:0 auto;
-  position:relative;
+  font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);
+  display:flex;flex-direction:column;max-width:430px;margin:0 auto;
 }
-
-/* ── TOPBAR ── */
+/* topbar */
 .topbar{
   background:var(--paper);border-bottom:1px solid var(--paper3);
   padding:calc(var(--safe-top) + 10px) 16px 10px;
-  display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
 }
 .logo{font-family:'Shippori Mincho',serif;font-size:19px;letter-spacing:.06em;color:var(--ink)}
 .logo-mark{color:var(--accent);font-size:22px;margin-right:2px}
-.topbar-right{display:flex;align-items:center;gap:8px}
 .save-toast{font-size:11px;color:var(--accent);opacity:0;transition:opacity .5s;user-select:none}
 .save-toast.on{opacity:1}
-.icon-btn{
-  width:36px;height:36px;border-radius:50%;background:var(--paper2);
-  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:background .15s;flex-shrink:0;
-}
+.icon-btn{width:36px;height:36px;border-radius:50%;background:var(--paper2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
 .icon-btn:active{background:var(--paper3)}
 .icon-btn svg{width:18px;height:18px;stroke:var(--ink2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-
-/* ── SCREENS ── */
+/* screens */
 .screens{flex:1;overflow:hidden;position:relative}
-.screen{
-  position:absolute;inset:0;
-  display:flex;flex-direction:column;
-  opacity:0;pointer-events:none;
-  transform:translateX(30px);
-  transition:opacity .22s ease,transform .22s ease;
-  overflow:hidden;
-}
-.screen.active{opacity:1;pointer-events:all;transform:translateX(0)}
-.screen.prev{transform:translateX(-30px)}
-
-/* ── HOME ── */
-.home-hero{padding:22px 20px 14px}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;visibility:hidden;pointer-events:none;overflow:hidden}
+.screen.active{visibility:visible;pointer-events:all}
+/* home */
+.home-hero{padding:22px 20px 14px;flex-shrink:0}
 .home-greet{font-size:12px;color:var(--ink3);margin-bottom:4px;letter-spacing:.04em}
 .home-title{font-family:'Shippori Mincho',serif;font-size:26px;line-height:1.3}
 .home-title em{color:var(--accent);font-style:normal}
-.new-btn{
-  margin:4px 18px 4px;padding:14px 18px;
-  background:var(--accent);color:#fff;border:none;border-radius:18px;
-  font-family:'Zen Kaku Gothic New',sans-serif;font-size:15px;
-  cursor:pointer;display:flex;align-items:center;gap:12px;
-  width:calc(100% - 36px);transition:background .15s;
-}
+.new-btn{margin:4px 18px 4px;padding:14px 18px;background:var(--accent);color:#fff;border:none;border-radius:18px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:15px;cursor:pointer;display:flex;align-items:center;gap:12px;width:calc(100% - 36px);transition:background .15s;flex-shrink:0}
 .new-btn:active{background:var(--accent2)}
-.new-btn-plus{
-  width:30px;height:30px;border-radius:50%;
-  background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;
-  font-size:22px;flex-shrink:0;line-height:1;
-}
+.new-btn-plus{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;line-height:1}
 .new-btn-sub{font-size:11px;opacity:.75;margin-top:2px}
-.section-lbl{
-  font-size:11px;color:var(--ink3);letter-spacing:.1em;
-  padding:18px 20px 8px;text-transform:uppercase;flex-shrink:0;
-}
-.manual-list{
-  padding:0 15px calc(var(--safe-bottom) + 10px);
-  display:flex;flex-direction:column;gap:9px;
-  overflow-y:auto;flex:1;
-  -webkit-overflow-scrolling:touch;
-}
-.mc{
-  background:var(--paper);border:1px solid var(--paper3);border-radius:16px;
-  padding:13px 15px 13px 19px;cursor:pointer;
-  position:relative;overflow:hidden;
-  transition:background .15s;
-}
+.section-lbl{font-size:11px;color:var(--ink3);letter-spacing:.1em;padding:18px 20px 8px;text-transform:uppercase;flex-shrink:0}
+.manual-list{padding:0 15px calc(var(--safe-bottom)+10px);display:flex;flex-direction:column;gap:9px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.mc{background:var(--paper);border:1px solid var(--paper3);border-radius:16px;padding:13px 15px 13px 19px;cursor:pointer;position:relative;overflow:hidden;transition:background .15s}
 .mc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);border-radius:4px 0 0 4px}
 .mc.c1::before{background:var(--warm)}
 .mc.c2::before{background:var(--coral)}
 .mc:active{background:var(--accent-light)}
 .mc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .mc-title{font-size:14px;font-weight:500;color:var(--ink);line-height:1.4;flex:1}
-.mc-del{
-  width:24px;height:24px;border-radius:50%;background:transparent;border:none;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  color:var(--ink4);font-size:16px;line-height:1;transition:all .15s;margin-top:-2px;
-}
+.mc-del{width:24px;height:24px;border-radius:50%;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink4);font-size:16px;line-height:1;transition:all .15s;margin-top:-2px}
 .mc-del:hover{background:var(--coral-light);color:var(--danger)}
 .mc-meta{display:flex;gap:7px;margin-top:5px;flex-wrap:wrap;align-items:center}
 .mc-pill{background:var(--paper2);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--ink2)}
 .mc-date{font-size:10px;color:var(--ink3)}
-.empty-state{
-  text-align:center;padding:48px 20px;color:var(--ink3);font-size:14px;line-height:1.8;
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-}
-.empty-icon{font-size:42px;margin-bottom:12px;opacity:.35}
-
-/* ── EDITOR ── */
-.ed-header{
-  padding:12px 15px 10px;border-bottom:1px solid var(--paper3);
-  background:var(--paper);flex-shrink:0;
-}
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink3);font-size:14px;line-height:1.8;text-align:center;padding:20px}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+/* pwa banner */
+.pwa-banner{margin:0 16px 4px;padding:11px 14px;background:var(--accent-light);border:1px solid var(--accent2);border-radius:12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.pwa-banner.hidden{display:none}
+.pwa-text{flex:1;font-size:12px;color:var(--accent);line-height:1.4}
+.pwa-text strong{font-weight:500;display:block;margin-bottom:1px}
+.pwa-ok{padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:20px;font-size:12px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;white-space:nowrap}
+.pwa-x{background:none;border:none;cursor:pointer;color:var(--accent2);font-size:18px;line-height:1;padding:2px}
+/* editor */
+.ed-header{padding:12px 15px 10px;border-bottom:1px solid var(--paper3);background:var(--paper);flex-shrink:0}
 .ed-toprow{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.ed-title{
-  font-family:'Shippori Mincho',serif;font-size:20px;color:var(--ink);
-  border:none;background:transparent;width:100%;outline:none;line-height:1.4;
-}
+.ed-title{font-family:'Shippori Mincho',serif;font-size:20px;color:var(--ink);border:none;background:transparent;width:100%;outline:none;line-height:1.4}
 .ed-title::placeholder{color:var(--ink4)}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap;padding:0}
-.tag{
-  font-size:11px;padding:3px 10px;border-radius:20px;
-  border:1px solid var(--paper3);background:var(--paper2);
-  color:var(--ink2);cursor:pointer;transition:all .15s;
-  user-select:none;
-}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--paper3);background:var(--paper2);color:var(--ink2);cursor:pointer;transition:all .15s;user-select:none}
 .tag.on{background:var(--accent-light);border-color:var(--accent2);color:var(--accent)}
-
-.blocks{
-  flex:1;overflow-y:auto;padding:14px 18px 8px;
-  display:flex;flex-direction:column;gap:2px;
-  -webkit-overflow-scrolling:touch;
-}
-
-/* ── BLOCK ── */
-.blk{
-  display:flex;align-items:flex-start;gap:8px;
-  padding:5px 0;position:relative;border-radius:8px;
-  transition:opacity .2s,transform .2s;
-}
-.blk.drag-over-top{border-top:2px solid var(--accent)}
-.blk.drag-over-bot{border-bottom:2px solid var(--accent)}
-.blk.dragging{opacity:.4;transform:scale(.98)}
-.bhandle{
-  width:18px;flex-shrink:0;padding-top:6px;
-  opacity:0;transition:opacity .15s;cursor:grab;touch-action:none;
-}
-.blk:hover .bhandle,.blk.touch-held .bhandle{opacity:1}
+.blocks{flex:1;overflow-y:auto;padding:14px 18px 8px;display:flex;flex-direction:column;gap:2px;-webkit-overflow-scrolling:touch}
+/* blocks */
+.blk{display:flex;align-items:flex-start;gap:8px;padding:5px 0;position:relative;border-radius:8px}
+.blk.dot-top{border-top:2px solid var(--accent)}
+.blk.dot-bot{border-bottom:2px solid var(--accent)}
+.blk.dragging{opacity:.4}
+.bhandle{width:18px;flex-shrink:0;padding-top:6px;opacity:0;transition:opacity .15s;cursor:grab;touch-action:none}
+.blk:hover .bhandle{opacity:1}
 .bhandle svg{width:12px;height:12px;fill:var(--ink4)}
 .bcont{flex:1;min-width:0}
-.bcont input,.bcont textarea{
-  width:100%;border:none;background:transparent;outline:none;resize:none;
-  font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);line-height:1.65;
-}
+.bcont input,.bcont textarea{width:100%;border:none;background:transparent;outline:none;resize:none;font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);line-height:1.65}
 .b-h2 .bcont input{font-family:'Shippori Mincho',serif;font-size:18px;font-weight:500}
 .b-h3 .bcont input{font-size:15px;font-weight:500;color:var(--ink2)}
 .b-text .bcont textarea{font-size:14px}
 .b-step .bcont{display:flex;gap:9px;align-items:flex-start}
-.snum{
-  width:24px;height:24px;border-radius:50%;background:var(--accent);
-  color:#fff;font-size:11px;font-weight:500;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px;
-}
+.snum{width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px}
 .b-step .bcont textarea{font-size:14px;flex:1;border:none;background:transparent;outline:none;resize:none;line-height:1.65;font-family:'Zen Kaku Gothic New',sans-serif}
-.b-note .bcont{
-  background:var(--warm-light);border-left:3px solid var(--warm);
-  border-radius:0 8px 8px 0;padding:9px 12px;
-}
+.b-note .bcont{background:var(--warm-light);border-left:3px solid var(--warm);padding:9px 12px}
 .b-note .bcont textarea{font-size:13px;color:var(--ink2)}
-.bdel{
-  position:absolute;right:-2px;top:4px;
-  width:22px;height:22px;border-radius:50%;
-  background:var(--paper3);border:none;cursor:pointer;
-  display:none;align-items:center;justify-content:center;
-  font-size:14px;color:var(--ink3);line-height:1;transition:all .15s;
-}
+.bdel{position:absolute;right:-2px;top:4px;width:22px;height:22px;border-radius:50%;background:var(--paper3);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;color:var(--ink3);line-height:1;transition:all .15s}
 .blk:hover .bdel{display:flex}
 .bdel:hover{background:var(--coral-light);color:var(--danger)}
-
-.bbar{
-  display:flex;gap:5px;padding:9px 15px;
-  background:var(--paper);border-top:1px solid var(--paper3);
-  overflow-x:auto;flex-shrink:0;
-}
+.bbar{display:flex;gap:5px;padding:9px 15px;background:var(--paper);border-top:1px solid var(--paper3);overflow-x:auto;flex-shrink:0}
 .bbar::-webkit-scrollbar{display:none}
-.bbtn{
-  flex-shrink:0;padding:7px 12px;border-radius:9px;
-  border:1px solid var(--paper3);background:var(--paper2);
-  font-size:12px;color:var(--ink2);cursor:pointer;
-  font-family:'Zen Kaku Gothic New',sans-serif;white-space:nowrap;
-  transition:all .15s;
-}
-.bbtn:active{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
-
-/* ── EXPORT ── */
-.exp-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:20px;-webkit-overflow-scrolling:touch}
-.exp-scroll::-webkit-scrollbar{display:none}
-.sec-h{font-family:'Shippori Mincho',serif;font-size:17px;color:var(--ink);margin-bottom:11px}
+.bbtn{flex-shrink:0;padding:7px 12px;border-radius:9px;border:1px solid var(--paper3);background:var(--paper2);font-size:12px;color:var(--ink2);cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;white-space:nowrap}
+.bbtn:active{background:var(--accent-light);border-color:var(--accent2);color:var(--accent)}
+/* export */
+.exp-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:18px;-webkit-overflow-scrolling:touch}
+.exp-scroll::-webkit-scrollbar{width:3px}
+.sec-h{font-family:'Shippori Mincho',serif;font-size:17px;color:var(--ink);margin-bottom:10px}
 .cover-preview{width:100%;aspect-ratio:3/4;border-radius:16px;overflow:hidden;border:1px solid var(--paper3)}
 .cover-preview canvas{width:100%;height:100%;display:block}
 .thumb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
@@ -222,87 +124,33 @@ body{
 .thumb.on{border-color:var(--accent)}
 .thumb canvas{width:100%;height:100%;display:block}
 .thumb-lbl{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.42);color:#fff;font-size:9px;text-align:center;padding:3px 0}
-.photo-drop{
-  border:2px dashed var(--paper4);border-radius:14px;
-  padding:18px;text-align:center;cursor:pointer;background:var(--paper2);
-  transition:all .2s;
-}
+.photo-drop{border:2px dashed var(--paper3);border-radius:14px;padding:18px;text-align:center;cursor:pointer;background:var(--paper2);transition:all .2s}
 .photo-drop:active{border-color:var(--accent2);background:var(--accent-light)}
 .photo-drop p{font-size:13px;color:var(--ink3);margin-top:7px}
 .photo-drop p.sub{font-size:11px;margin-top:3px}
 .color-row{display:flex;gap:10px;flex-wrap:wrap}
-.cdot{
-  width:36px;height:36px;border-radius:50%;cursor:pointer;
-  border:3px solid transparent;transition:border-color .2s,transform .15s;
-}
+.cdot{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .2s,transform .15s}
 .cdot.on{border-color:var(--ink);transform:scale(1.1)}
-.exp-btn{
-  padding:14px;background:var(--accent);color:#fff;border:none;border-radius:16px;
-  font-family:'Zen Kaku Gothic New',sans-serif;font-size:16px;
-  cursor:pointer;width:100%;transition:background .15s;
-}
+.exp-btn{padding:14px;background:var(--accent);color:#fff;border:none;border-radius:16px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:16px;cursor:pointer;width:100%}
 .exp-btn:active{background:var(--accent2)}
 .exp-btn:disabled{background:var(--ink4);cursor:default}
-.pdf-msg{font-size:12px;color:var(--accent);text-align:center;min-height:18px;padding:2px 0}
-
-/* ── PWA INSTALL BANNER ── */
-.pwa-banner{
-  background:var(--accent-light);border:1px solid var(--accent2);
-  border-radius:12px;margin:0 15px;padding:12px 15px;
-  display:flex;align-items:center;gap:10px;
-  animation:fadeIn .4s ease;
-}
-.pwa-banner.hidden{display:none}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.pwa-banner-text{flex:1;font-size:13px;color:var(--accent);line-height:1.4}
-.pwa-banner-text strong{font-weight:500;display:block;margin-bottom:2px}
-.pwa-install-btn{
-  padding:7px 14px;background:var(--accent);color:#fff;border:none;
-  border-radius:20px;font-size:13px;cursor:pointer;white-space:nowrap;
-  font-family:'Zen Kaku Gothic New',sans-serif;
-}
-.pwa-close{background:none;border:none;cursor:pointer;color:var(--accent2);font-size:18px;line-height:1;padding:2px}
-
-/* ── BOTTOM NAV ── */
-.bnav{
-  background:var(--paper);border-top:1px solid var(--paper3);
-  display:flex;padding:8px 0 calc(var(--safe-bottom) + 10px);
-  flex-shrink:0;
-}
-.nitem{
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-  cursor:pointer;padding:3px 0;color:var(--ink3);
-  transition:color .15s;user-select:none;
-}
+.pdf-msg{font-size:12px;color:var(--accent);text-align:center;min-height:18px}
+/* bottom nav — 通常フロー */
+.bnav{background:var(--paper);border-top:1px solid var(--paper3);display:flex;padding:8px 0 calc(var(--safe-bottom)+10px);flex-shrink:0}
+.nitem{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:3px 0;color:var(--ink3);transition:color .15s;border:none;background:none;font-family:'Zen Kaku Gothic New',sans-serif}
 .nitem.on{color:var(--accent)}
 .nitem svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nitem span{font-size:9px;letter-spacing:.03em}
-
-/* ── DRAG GHOST ── */
-#drag-ghost{
-  position:fixed;pointer-events:none;z-index:9999;
-  background:var(--paper);border:1px solid var(--accent);border-radius:10px;
-  padding:8px 12px;font-size:13px;color:var(--ink);
-  max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,.12);
-  opacity:0;transition:opacity .1s;
-}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
 <div class="topbar">
   <div class="logo"><span class="logo-mark">▲</span>てびき</div>
-  <div class="topbar-right">
-    <span class="save-toast" id="toast">保存しました</span>
-    <button class="icon-btn" id="search-btn" title="検索（準備中）">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
-  </div>
+  <span class="save-toast" id="toast">保存しました</span>
 </div>
 
-<!-- SCREENS -->
-<div class="screens" id="screens">
+<div class="screens">
 
   <!-- HOME -->
   <div class="screen active" id="sc-home">
@@ -310,18 +158,14 @@ body{
       <div class="home-greet">今日も、ひとつ書いておこう</div>
       <div class="home-title">あなたの<em>てびき</em>集</div>
     </div>
-    <!-- PWA install banner -->
     <div class="pwa-banner hidden" id="pwa-banner">
-      <div class="pwa-banner-text">
-        <strong>ホーム画面に追加</strong>
-        オフラインでも使えるようになります
-      </div>
-      <button class="pwa-install-btn" id="pwa-install-btn">追加する</button>
-      <button class="pwa-close" id="pwa-close">×</button>
+      <div class="pwa-text"><strong>ホーム画面に追加</strong>オフラインでも使えます</div>
+      <button class="pwa-ok" id="pwa-ok">追加する</button>
+      <button class="pwa-x" id="pwa-x">×</button>
     </div>
     <button class="new-btn" id="new-btn">
       <span class="new-btn-plus">+</span>
-      <div>
+      <div style="text-align:left">
         <div style="font-weight:500">新しいてびきを作る</div>
         <div class="new-btn-sub">コーヒーの淹れ方から、通勤ルートまで</div>
       </div>
@@ -350,7 +194,7 @@ body{
       </div>
     </div>
     <div class="blocks" id="blocks"></div>
-    <div class="bbar" id="bbar">
+    <div class="bbar">
       <button class="bbtn" data-t="step">＋ ステップ</button>
       <button class="bbtn" data-t="text">＋ テキスト</button>
       <button class="bbtn" data-t="h2">＋ 見出し</button>
@@ -394,129 +238,75 @@ body{
     </div>
   </div>
 
-</div><!-- /screens -->
-
-<!-- BOTTOM NAV -->
-<div class="bnav">
-  <div class="nitem on" id="nav-home">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
-    <span>ホーム</span>
-  </div>
-  <div class="nitem" id="nav-new">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-    <span>新規作成</span>
-  </div>
-  <div class="nitem" id="nav-list">
-    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    <span>一覧</span>
-  </div>
 </div>
 
-<!-- DRAG GHOST -->
-<div id="drag-ghost"></div>
+<!-- BOTTOM NAV（通常フロー・常時表示） -->
+<div class="bnav">
+  <button class="nitem on" id="nav-home">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    <span>ホーム</span>
+  </button>
+  <button class="nitem" id="nav-new">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>新規作成</span>
+  </button>
+  <button class="nitem" id="nav-list">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span>一覧</span>
+  </button>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-/* ═══════════════════════════════════════
-   STORAGE
-═══════════════════════════════════════ */
 const SK='tebiki_v3';
-let db=(() => {
-  try{return JSON.parse(localStorage.getItem(SK)||'{"manuals":[]}')}
-  catch{return{manuals:[]}}
-})();
-function persist(){
-  try{localStorage.setItem(SK,JSON.stringify(db));flashToast()}
-  catch(e){console.warn('save failed',e)}
-}
-function flashToast(){
-  const t=document.getElementById('toast');
-  t.classList.add('on');clearTimeout(t._t);
-  t._t=setTimeout(()=>t.classList.remove('on'),1800);
-}
+let db=(()=>{try{return JSON.parse(localStorage.getItem(SK)||'{"manuals":[]}')}catch{return{manuals:[]}}})();
+function persist(){try{localStorage.setItem(SK,JSON.stringify(db));flashToast()}catch(e){console.warn(e)}}
+function flashToast(){const t=document.getElementById('toast');t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800)}
 function getM(id){return db.manuals.find(m=>m.id===id)}
-function delM(id){
-  if(!confirm('このてびきを削除しますか？'))return;
-  db.manuals=db.manuals.filter(m=>m.id!==id);persist();renderHome();
-}
+function delM(id){if(!confirm('このてびきを削除しますか？'))return;db.manuals=db.manuals.filter(m=>m.id!==id);persist();renderHome()}
 
-/* ═══════════════════════════════════════
-   SCREEN NAVIGATION
-═══════════════════════════════════════ */
-let curScreen='home';
-const SCREENS=['home','editor','export'];
-function goTo(name,dir='forward'){
-  const from=document.getElementById('sc-'+curScreen);
-  const to=document.getElementById('sc-'+name);
-  from.classList.remove('active');
-  from.classList.add(dir==='back'?'':' ');
-  to.classList.add('active');
-  if(dir==='back') from.style.transform='translateX(30px)';
-  else from.style.transform='translateX(-30px)';
-  setTimeout(()=>{from.style.transform='';from.classList.remove('prev')},250);
-  curScreen=name;
+function goTo(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sc-'+name).classList.add('active');
   document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('on'));
-  if(name==='home'){
-    document.getElementById('nav-home').classList.add('on');
-    renderHome();
-  }
-  if(name==='export') initExport();
+  if(name==='home'){document.getElementById('nav-home').classList.add('on');renderHome()}
+  if(name==='export')initExport();
 }
+function goHome(){autoSave();goTo('home')}
+function goExport(){autoSave();goTo('export')}
 
-/* ═══════════════════════════════════════
-   HOME
-═══════════════════════════════════════ */
-const COLOR_CYCLES=['','c1','c2'];
-function formatAgo(ts){
+function ago(ts){
   const s=Math.floor((Date.now()-ts)/1000);
-  if(s<60)return 'たった今';
-  if(s<3600)return Math.floor(s/60)+'分前';
+  if(s<60)return'たった今';if(s<3600)return Math.floor(s/60)+'分前';
   if(s<86400)return Math.floor(s/3600)+'時間前';
   if(s<86400*30)return Math.floor(s/86400)+'日前';
-  const d=new Date(ts);return `${d.getMonth()+1}/${d.getDate()}`;
+  const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()}`;
 }
+const CC=['','c1','c2'];
 function renderHome(){
-  const list=document.getElementById('manual-list');
-  list.innerHTML='';
+  const list=document.getElementById('manual-list');list.innerHTML='';
   const rev=[...db.manuals].reverse();
-  if(!rev.length){
-    list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div>まだてびきがありません<br>上のボタンから作ってみましょう</div>`;
-    return;
-  }
+  if(!rev.length){list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div>まだてびきがありません<br>上のボタンから作ってみましょう</div>`;return}
   rev.forEach((m,i)=>{
     const steps=m.blocks.filter(b=>b.type==='step').length;
     const tags=(m.tags||[]).join('・');
     const card=document.createElement('div');
-    card.className='mc '+COLOR_CYCLES[i%3];
-    card.innerHTML=`
-      <div class="mc-top">
-        <div class="mc-title">${esc(m.title||'タイトルなし')}</div>
-        <button class="mc-del" title="削除">×</button>
-      </div>
-      <div class="mc-meta">
-        <span class="mc-date">${formatAgo(m.updatedAt)}</span>
-        ${tags?`<span class="mc-pill">${esc(tags)}</span>`:''}
-        ${steps?`<span class="mc-pill">${steps}ステップ</span>`:''}
-      </div>`;
+    card.className='mc '+CC[i%3];
+    card.innerHTML=`<div class="mc-top"><div class="mc-title">${esc(m.title||'タイトルなし')}</div><button class="mc-del">×</button></div>
+      <div class="mc-meta"><span class="mc-date">${ago(m.updatedAt)}</span>${tags?`<span class="mc-pill">${esc(tags)}</span>`:''}${steps?`<span class="mc-pill">${steps}ステップ</span>`:''}</div>`;
     card.querySelector('.mc-del').onclick=e=>{e.stopPropagation();delM(m.id)};
     card.onclick=()=>openManual(m.id);
     list.appendChild(card);
   });
 }
 
-/* ═══════════════════════════════════════
-   EDITOR
-═══════════════════════════════════════ */
-let curId=null;
-let saveTimer=null;
+let curId=null,saveTimer=null;
 function schedSave(){clearTimeout(saveTimer);saveTimer=setTimeout(autoSave,600)}
 function autoSave(){
   const m=getM(curId);if(!m)return;
   m.title=document.getElementById('ed-title').value;
   m.tags=[...document.querySelectorAll('.tag.on')].map(t=>t.dataset.v);
-  m.blocks=collectBlocks();
-  m.updatedAt=Date.now();
-  persist();
+  m.blocks=collectBlocks();m.updatedAt=Date.now();persist();
 }
 function collectBlocks(){
   return[...document.querySelectorAll('#blocks .blk')].map(el=>{
@@ -524,159 +314,69 @@ function collectBlocks(){
     return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:''};
   });
 }
-
 function newManual(){
   const id='m'+Date.now();
   db.manuals.push({id,title:'',tags:[],blocks:[{id:'b0',type:'step',val:''}],createdAt:Date.now(),updatedAt:Date.now()});
   persist();openManual(id);
 }
 function openManual(id){
-  curId=id;
-  const m=getM(id);
+  curId=id;const m=getM(id);
   document.getElementById('ed-title').value=m.title||'';
   document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('on',(m.tags||[]).includes(t.dataset.v)));
-  renderBlocks(m.blocks||[]);
-  goTo('editor');
+  renderBlocks(m.blocks||[]);goTo('editor');
 }
 
-/* ── BLOCKS ── */
 let stepCnt=0;
-function renderBlocks(blocks){
-  const area=document.getElementById('blocks');
-  area.innerHTML='';stepCnt=0;
-  blocks.forEach(b=>area.appendChild(mkBlk(b)));
-  initDnD();
-}
-function addBlock(type){
-  const id='b'+Date.now();
-  const el=mkBlk({id,type,val:''});
-  document.getElementById('blocks').appendChild(el);
-  el.querySelector('input,textarea')?.focus();
-  initDnD();schedSave();
-}
+function renderBlocks(blocks){const area=document.getElementById('blocks');area.innerHTML='';stepCnt=0;blocks.forEach(b=>area.appendChild(mkBlk(b)));initDnD()}
+function addBlock(type){const id='b'+Date.now();const el=mkBlk({id,type,val:''});document.getElementById('blocks').appendChild(el);el.querySelector('input,textarea')?.focus();initDnD();schedSave()}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function ar(el){el.style.height='auto';el.style.height=el.scrollHeight+'px'}
-function renum(){
-  let n=0;
-  document.querySelectorAll('#blocks .blk[data-type="step"] .snum').forEach(el=>el.textContent=++n);
-}
+function renum(){let n=0;document.querySelectorAll('#blocks .blk[data-type="step"] .snum').forEach(e=>e.textContent=++n)}
+
 function mkBlk(b){
   const d=document.createElement('div');
   d.className='blk b-'+b.type;d.dataset.id=b.id;d.dataset.type=b.type;
-  const handle=`<div class="bhandle" title="ドラッグして並び替え"><svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/></svg></div>`;
-  const del=`<button class="bdel" title="削除">×</button>`;
+  const handle=`<div class="bhandle"><svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/></svg></div>`;
+  const del=`<button class="bdel">×</button>`;
   const v=esc(b.val||'');
-  if(b.type==='h2'){
-    d.innerHTML=`${handle}<div class="bcont"><input placeholder="見出し" value="${v}"></div>${del}`;
-  }else if(b.type==='h3'){
-    d.innerHTML=`${handle}<div class="bcont"><input placeholder="小見出し" value="${v}"></div>${del}`;
-  }else if(b.type==='text'){
-    d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力..." rows="2">${v}</textarea></div>${del}`;
-  }else if(b.type==='step'){
-    stepCnt++;
-    d.innerHTML=`${handle}<div class="bcont"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く..." rows="2">${v}</textarea></div>${del}`;
-  }else if(b.type==='note'){
-    d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点..." rows="2">${v}</textarea></div>${del}`;
-  }
+  if(b.type==='h2'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="見出し" value="${v}"></div>${del}`}
+  else if(b.type==='h3'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="小見出し" value="${v}"></div>${del}`}
+  else if(b.type==='text'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力..." rows="2">${v}</textarea></div>${del}`}
+  else if(b.type==='step'){stepCnt++;d.innerHTML=`${handle}<div class="bcont"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く..." rows="2">${v}</textarea></div>${del}`}
+  else if(b.type==='note'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点..." rows="2">${v}</textarea></div>${del}`}
   const inp=d.querySelector('input,textarea');
   if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});ar(inp)}
   d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
   return d;
 }
 
-/* ═══════════════════════════════════════
-   DRAG & DROP（マウス＋タッチ両対応）
-═══════════════════════════════════════ */
-let dndState=null;
-const ghost=document.getElementById('drag-ghost');
-
+let dnd=null;
 function initDnD(){
-  document.querySelectorAll('.bhandle').forEach(h=>{
-    h.onmousedown=e=>startDrag(e,'mouse');
-    h.ontouchstart=e=>startDrag(e,'touch');
-  });
+  document.querySelectorAll('.bhandle').forEach(h=>{h.onmousedown=e=>startDrag(e,'mouse');h.ontouchstart=e=>startDrag(e,'touch')});
 }
-
-function getBlkLabel(el){
-  const inp=el.querySelector('input,textarea');
-  const v=inp?inp.value:'';
-  const type=el.dataset.type;
-  const labels={step:'ステップ',text:'テキスト',h2:'見出し',h3:'小見出し',note:'メモ'};
-  return (labels[type]||type)+(v?' — '+v.slice(0,20):'');
-}
-
 function startDrag(e,mode){
-  e.preventDefault();
-  const handle=e.currentTarget;
-  const blk=handle.closest('.blk');
-  if(!blk)return;
-
-  ghost.textContent=getBlkLabel(blk);
-  ghost.style.opacity='0';ghost.style.display='block';
-
-  dndState={blk,mode,startY:mode==='touch'?e.touches[0].clientY:e.clientY};
-  blk.classList.add('dragging');
-
-  if(mode==='mouse'){
-    document.addEventListener('mousemove',onDragMove);
-    document.addEventListener('mouseup',onDragEnd);
-  }else{
-    document.addEventListener('touchmove',onDragMove,{passive:false});
-    document.addEventListener('touchend',onDragEnd);
-  }
+  e.preventDefault();const blk=e.currentTarget.closest('.blk');if(!blk)return;
+  dnd={blk,mode};blk.classList.add('dragging');
+  if(mode==='mouse'){document.onmousemove=onDrag;document.onmouseup=endDrag}
+  else{document.ontouchmove=e2=>{e2.preventDefault();onDrag(e2)};document.ontouchend=endDrag}
+}
+function clientY(e){return e.touches?e.touches[0].clientY:e.clientY}
+function onDrag(e){
+  if(!dnd)return;const cy=clientY(e);
+  const sibs=[...document.querySelectorAll('#blocks .blk:not(.dragging)')];
+  sibs.forEach(s=>s.classList.remove('dot-top','dot-bot'));
+  let tgt=null,pos='after';
+  for(const s of sibs){const r=s.getBoundingClientRect();if(cy<r.top+r.height/2){tgt=s;pos='before';break}tgt=s;pos='after'}
+  if(tgt)tgt.classList.add(pos==='before'?'dot-top':'dot-bot');
+  dnd.tgt=tgt;dnd.pos=pos;
+}
+function endDrag(){
+  if(!dnd)return;const{blk,tgt,pos}=dnd;blk.classList.remove('dragging');
+  document.querySelectorAll('.blk').forEach(s=>s.classList.remove('dot-top','dot-bot'));
+  if(tgt&&tgt!==blk){const area=document.getElementById('blocks');if(pos==='before')area.insertBefore(blk,tgt);else tgt.after(blk)}
+  renum();schedSave();document.onmousemove=document.onmouseup=null;document.ontouchmove=document.ontouchend=null;dnd=null;
 }
 
-function onDragMove(e){
-  if(!dndState)return;
-  if(e.cancelable)e.preventDefault();
-  const clientX=dndState.mode==='touch'?e.touches[0].clientX:e.clientX;
-  const clientY=dndState.mode==='touch'?e.touches[0].clientY:e.clientY;
-
-  ghost.style.left=(clientX-130)+'px';
-  ghost.style.top=(clientY-20)+'px';
-  ghost.style.opacity='1';
-
-  const area=document.getElementById('blocks');
-  const siblings=[...area.querySelectorAll('.blk:not(.dragging)')];
-  siblings.forEach(s=>s.classList.remove('drag-over-top','drag-over-bot'));
-
-  let target=null,pos='after';
-  for(const s of siblings){
-    const r=s.getBoundingClientRect();
-    if(clientY<r.top+r.height/2){target=s;pos='before';break}
-    target=s;pos='after';
-  }
-  if(target)target.classList.add(pos==='before'?'drag-over-top':'drag-over-bot');
-  dndState.target=target;dndState.pos=pos;
-}
-
-function onDragEnd(e){
-  if(!dndState)return;
-  ghost.style.opacity='0';setTimeout(()=>ghost.style.display='none',150);
-  const {blk,target,pos}=dndState;
-  blk.classList.remove('dragging');
-  document.querySelectorAll('.blk').forEach(s=>s.classList.remove('drag-over-top','drag-over-bot'));
-
-  if(target&&target!==blk){
-    const area=document.getElementById('blocks');
-    if(pos==='before') area.insertBefore(blk,target);
-    else target.after(blk);
-  }
-  renum();schedSave();
-
-  if(dndState.mode==='mouse'){
-    document.removeEventListener('mousemove',onDragMove);
-    document.removeEventListener('mouseup',onDragEnd);
-  }else{
-    document.removeEventListener('touchmove',onDragMove);
-    document.removeEventListener('touchend',onDragEnd);
-  }
-  dndState=null;
-}
-
-/* ═══════════════════════════════════════
-   COVER / EXPORT
-═══════════════════════════════════════ */
 const PALETTES=[
   {name:'抹茶',bg:'#F0F5F0',accent:'#0F6E56',deco:'#5DCAA5',stripe:'rgba(93,202,165,.12)',text:'#2C2C2A',sub:'#5F5E5A'},
   {name:'琥珀',bg:'#FBF5E8',accent:'#BA7517',deco:'#EF9F27',stripe:'rgba(239,159,39,.12)',text:'#2C2C2A',sub:'#5F5E5A'},
@@ -686,321 +386,131 @@ const PALETTES=[
   {name:'朱',bg:'#FCF2EE',accent:'#993C1D',deco:'#F0997B',stripe:'rgba(240,153,123,.12)',text:'#2C2C2A',sub:'#5F5E5A'},
 ];
 const COVERS=[
-  {name:'ボタニカル',fn:cvBotanical},
-  {name:'ジオメトリ',fn:cvGeometry},
-  {name:'ストライプ',fn:cvStripe},
-  {name:'ミニマル',fn:cvMinimal},
-  {name:'フレーム',fn:cvFrame},
-  {name:'和紙',fn:cvWashi},
+  {name:'ボタニカル',fn:cvBot},{name:'ジオメトリ',fn:cvGeo},{name:'ストライプ',fn:cvStr},
+  {name:'ミニマル',fn:cvMin},{name:'フレーム',fn:cvFrm},{name:'和紙',fn:cvWas},
 ];
 let selCover=0,selColor=0,customPhoto=null;
-
-function rng(seed){let s=seed|0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
-function drawLeaf(ctx,x,y,sz,ang,col){
-  ctx.save();ctx.translate(x,y);ctx.rotate(ang);
-  ctx.strokeStyle=col;ctx.lineWidth=.8;
-  ctx.beginPath();ctx.moveTo(0,0);
-  ctx.bezierCurveTo(sz*.4,-sz*.3,sz*.7,-sz*.1,sz,0);
-  ctx.bezierCurveTo(sz*.7,sz*.1,sz*.4,sz*.3,0,0);
-  ctx.stroke();ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(sz,0);ctx.stroke();
-  ctx.restore();
+function rng(s){let x=s|0;return()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296}}
+function drawLeaf(ctx,x,y,sz,a,col){
+  ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.strokeStyle=col;ctx.lineWidth=.8;
+  ctx.beginPath();ctx.moveTo(0,0);ctx.bezierCurveTo(sz*.4,-sz*.3,sz*.7,-sz*.1,sz,0);ctx.bezierCurveTo(sz*.7,sz*.1,sz*.4,sz*.3,0,0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(sz,0);ctx.stroke();ctx.restore();
 }
-function drawTitle(ctx,title,w,h,col,subcol){
+function drawTitle(ctx,title,w,h,tc,sc){
   ctx.textAlign='center';ctx.textBaseline='middle';
   const maxW=w-56;const sz=Math.min(18,maxW/Math.max([...title].length,1)*1.9);
   ctx.font=`500 ${sz}px 'Zen Kaku Gothic New',sans-serif`;
   const lines=[];let cur='';
-  [...title].forEach(ch=>{
-    if(ctx.measureText(cur+ch).width>maxW){lines.push(cur);cur=ch}else cur+=ch;
-  });
+  [...title].forEach(ch=>{if(ctx.measureText(cur+ch).width>maxW){lines.push(cur);cur=ch}else cur+=ch});
   lines.push(cur);
   const lh=sz*1.65;const sy=h*.72-((lines.length-1)*lh)/2;
-  ctx.fillStyle=col;
-  lines.forEach((l,i)=>ctx.fillText(l,w/2,sy+i*lh));
-  ctx.font=`400 10px 'Zen Kaku Gothic New',sans-serif`;
-  ctx.fillStyle=subcol;ctx.fillText('▲  てびき',w/2,h*.89);
+  ctx.fillStyle=tc;lines.forEach((l,i)=>ctx.fillText(l,w/2,sy+i*lh));
+  ctx.font=`400 10px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=sc;ctx.fillText('▲  てびき',w/2,h*.89);
 }
-function photoBase(ctx,w,h,photo){
-  ctx.clearRect(0,0,w,h);ctx.drawImage(photo,0,0,w,h);
-  ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(0,0,w,h);
-}
+function photoBase(ctx,w,h){ctx.clearRect(0,0,w,h);ctx.drawImage(customPhoto,0,0,w,h);ctx.fillStyle='rgba(0,0,0,.38)';ctx.fillRect(0,0,w,h)}
+function ftc(p){return customPhoto?'#fff':p.text}
+function fsc(p){return customPhoto?'rgba(255,255,255,.7)':p.sub}
 
-function cvBotanical(ctx,w,h,title,p,photo){
-  const r=rng(42);
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  for(let i=0;i<12;i++)drawLeaf(ctx,r()*w,r()*h,22+r()*22,r()*Math.PI*2,p.deco);
-  const tc=photo?'#fff':p.text,sc=photo?'rgba(255,255,255,.7)':p.sub;
-  drawTitle(ctx,title,w,h,tc,sc);
-}
-function cvGeometry(ctx,w,h,title,p,photo){
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  ctx.strokeStyle=p.deco;ctx.lineWidth=.8;
-  for(let i=0;i<6;i++)for(let j=0;j<9;j++){
-    const x=i*(w/5)-w*.1,y=j*(h/7)-h*.05,s=36;
-    ctx.beginPath();ctx.moveTo(x+s/2,y);ctx.lineTo(x+s,y+s*.866);ctx.lineTo(x,y+s*.866);ctx.closePath();ctx.stroke();
-  }
-  ctx.fillStyle=p.accent;ctx.fillRect(0,h*.62,w,h*.38);
-  drawTitle(ctx,title,w,h,'#fff','rgba(255,255,255,.7)');
-}
-function cvStripe(ctx,w,h,title,p,photo){
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  for(let i=-h;i<w+h;i+=20){ctx.fillStyle=p.stripe;ctx.fillRect(i,0,10,h+i)}
-  ctx.save();ctx.translate(w/2,h/2);ctx.rotate(-.08);
-  ctx.fillStyle=p.accent;ctx.fillRect(-w*.55,-h*.17,w*1.1,h*.34);ctx.restore();
-  drawTitle(ctx,title,w,h,'#fff','rgba(255,255,255,.7)');
-}
-function cvMinimal(ctx,w,h,title,p,photo){
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  ctx.fillStyle=p.accent;ctx.fillRect(0,0,w,5);
-  ctx.fillStyle=p.accent;ctx.fillRect(28,h*.55,w-56,2);
-  ctx.font=`bold ${w*.27}px 'Shippori Mincho',serif`;
-  ctx.fillStyle=p.accent;ctx.globalAlpha=.07;
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('▲',w*.55,h*.42);ctx.globalAlpha=1;
-  const tc=photo?'#fff':p.text,sc=photo?'rgba(255,255,255,.7)':p.sub;
-  drawTitle(ctx,title,w,h,tc,sc);
-}
-function cvFrame(ctx,w,h,title,p,photo){
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  const m=15;
-  ctx.strokeStyle=p.accent;ctx.lineWidth=2;ctx.strokeRect(m,m,w-m*2,h-m*2);
-  ctx.strokeStyle=p.deco;ctx.lineWidth=.8;ctx.strokeRect(m+6,m+6,w-m*2-12,h-m*2-12);
-  [[m,m],[w-m,m],[w-m,h-m],[m,h-m]].forEach(([cx,cy])=>{
-    ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fillStyle=p.accent;ctx.fill();
-  });
-  const tc=photo?'#fff':p.text,sc=photo?'rgba(255,255,255,.7)':p.sub;
-  drawTitle(ctx,title,w,h,tc,sc);
-}
-function cvWashi(ctx,w,h,title,p,photo){
-  const r=rng(99);
-  if(photo)photoBase(ctx,w,h,photo);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}
-  ctx.fillStyle=p.deco;
-  for(let i=0;i<200;i++){ctx.globalAlpha=.03+r()*.04;ctx.fillRect(r()*w,r()*h,2+r()*3,1)}
-  ctx.globalAlpha=1;
-  ctx.strokeStyle=p.accent;ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(w-36,0);ctx.lineTo(w-36,h);ctx.stroke();
-  ctx.lineWidth=.4;ctx.beginPath();ctx.moveTo(w-42,0);ctx.lineTo(w-42,h);ctx.stroke();
-  const tc=photo?'#fff':p.text,sc=photo?'rgba(255,255,255,.7)':p.sub;
-  drawTitle(ctx,title,w,h,tc,sc);
-}
+function cvBot(ctx,w,h,t,p){const r=rng(42);if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}for(let i=0;i<12;i++)drawLeaf(ctx,r()*w,r()*h,22+r()*22,r()*Math.PI*2,p.deco);drawTitle(ctx,t,w,h,ftc(p),fsc(p))}
+function cvGeo(ctx,w,h,t,p){if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}ctx.strokeStyle=p.deco;ctx.lineWidth=.8;for(let i=0;i<6;i++)for(let j=0;j<9;j++){const x=i*(w/5)-w*.1,y=j*(h/7)-h*.05,s=36;ctx.beginPath();ctx.moveTo(x+s/2,y);ctx.lineTo(x+s,y+s*.866);ctx.lineTo(x,y+s*.866);ctx.closePath();ctx.stroke()}ctx.fillStyle=p.accent;ctx.fillRect(0,h*.62,w,h*.38);drawTitle(ctx,t,w,h,'#fff','rgba(255,255,255,.7)')}
+function cvStr(ctx,w,h,t,p){if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}for(let i=-h;i<w+h;i+=20){ctx.fillStyle=p.stripe;ctx.fillRect(i,0,10,h+i)}ctx.save();ctx.translate(w/2,h/2);ctx.rotate(-.08);ctx.fillStyle=p.accent;ctx.fillRect(-w*.55,-h*.17,w*1.1,h*.34);ctx.restore();drawTitle(ctx,t,w,h,'#fff','rgba(255,255,255,.7)')}
+function cvMin(ctx,w,h,t,p){if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}ctx.fillStyle=p.accent;ctx.fillRect(0,0,w,5);ctx.fillRect(28,h*.55,w-56,2);ctx.font=`bold ${w*.27}px serif`;ctx.fillStyle=p.accent;ctx.globalAlpha=.07;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('▲',w*.55,h*.42);ctx.globalAlpha=1;drawTitle(ctx,t,w,h,ftc(p),fsc(p))}
+function cvFrm(ctx,w,h,t,p){if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}const m=15;ctx.strokeStyle=p.accent;ctx.lineWidth=2;ctx.strokeRect(m,m,w-m*2,h-m*2);ctx.strokeStyle=p.deco;ctx.lineWidth=.8;ctx.strokeRect(m+6,m+6,w-m*2-12,h-m*2-12);[[m,m],[w-m,m],[w-m,h-m],[m,h-m]].forEach(([cx,cy])=>{ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fillStyle=p.accent;ctx.fill()});drawTitle(ctx,t,w,h,ftc(p),fsc(p))}
+function cvWas(ctx,w,h,t,p){const r=rng(99);if(customPhoto)photoBase(ctx,w,h);else{ctx.fillStyle=p.bg;ctx.fillRect(0,0,w,h)}ctx.fillStyle=p.deco;for(let i=0;i<200;i++){ctx.globalAlpha=.03+r()*.04;ctx.fillRect(r()*w,r()*h,2+r()*3,1)}ctx.globalAlpha=1;ctx.strokeStyle=p.accent;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(w-36,0);ctx.lineTo(w-36,h);ctx.stroke();ctx.lineWidth=.4;ctx.beginPath();ctx.moveTo(w-42,0);ctx.lineTo(w-42,h);ctx.stroke();drawTitle(ctx,t,w,h,ftc(p),fsc(p))}
 
-function renderCover(canvas,ci,pi,title,photo){
-  const ctx=canvas.getContext('2d');
-  const w=canvas.width,h=canvas.height;
-  ctx.clearRect(0,0,w,h);
-  COVERS[ci].fn(ctx,w,h,title||'てびき',PALETTES[pi],photo||null);
-}
+function renderCover(canvas,ci,pi,title){const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);COVERS[ci].fn(ctx,canvas.width,canvas.height,title||'てびき',PALETTES[pi])}
 
 function initExport(){
-  const m=getM(curId);
-  const title=m?m.title||'てびき':'てびき';
-  const grid=document.getElementById('thumb-grid');
-  grid.innerHTML='';
+  const m=getM(curId);const title=m?m.title||'てびき':'てびき';
+  const grid=document.getElementById('thumb-grid');grid.innerHTML='';
   COVERS.forEach((cv,i)=>{
-    const wrap=document.createElement('div');
-    wrap.className='thumb'+(i===selCover?' on':'');
+    const wrap=document.createElement('div');wrap.className='thumb'+(i===selCover?' on':'');
     const c=document.createElement('canvas');c.width=120;c.height=160;
     const lbl=document.createElement('div');lbl.className='thumb-lbl';lbl.textContent=cv.name;
-    wrap.appendChild(c);wrap.appendChild(lbl);
-    renderCover(c,i,selColor,title,customPhoto);
-    wrap.onclick=()=>{selCover=i;initExport()};
-    grid.appendChild(wrap);
+    wrap.appendChild(c);wrap.appendChild(lbl);renderCover(c,i,selColor,title);
+    wrap.onclick=()=>{selCover=i;initExport()};grid.appendChild(wrap);
   });
   const cr=document.getElementById('color-row');cr.innerHTML='';
   PALETTES.forEach((p,i)=>{
-    const dot=document.createElement('div');
-    dot.className='cdot'+(i===selColor?' on':'');
+    const dot=document.createElement('div');dot.className='cdot'+(i===selColor?' on':'');
     dot.style.background=p.accent;dot.title=p.name;
-    dot.onclick=()=>{selColor=i;initExport()};
-    cr.appendChild(dot);
+    dot.onclick=()=>{selColor=i;initExport()};cr.appendChild(dot);
   });
-  renderCover(document.getElementById('main-cvs'),selCover,selColor,title,customPhoto);
+  renderCover(document.getElementById('main-cvs'),selCover,selColor,title);
 }
 
-/* ═══════════════════════════════════════
-   PDF GENERATION
-═══════════════════════════════════════ */
-function h2r(hex){
-  return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];
-}
-function safe(s){
-  return String(s||'').replace(/[\u{10000}-\u{10FFFF}]/gu,'?').replace(/[^\u0000-\u00FF\u3000-\u9FFF\uF900-\uFAFF]/g,'?');
-}
+function h2r(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+function safe(s){return String(s||'').replace(/[\u{10000}-\u{10FFFF}]/gu,'?').replace(/[^\u0000-\u00FF\u3000-\u9FFF\uF900-\uFAFF]/g,'?')}
+function tick(){return new Promise(r=>setTimeout(r,20))}
 
 async function genPDF(){
-  const m=getM(curId);if(!m){alert('てびきが見つかりません');return}
-  const btn=document.getElementById('pdf-btn');
-  const msg=document.getElementById('pdf-msg');
+  const m=getM(curId);if(!m)return;
+  const btn=document.getElementById('pdf-btn'),msg=document.getElementById('pdf-msg');
   btn.disabled=true;msg.textContent='PDFを生成しています...';
   try{
     await tick();
-    const {jsPDF}=window.jspdf;
+    const{jsPDF}=window.jspdf;
     const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     const PW=210,PH=297,MX=20,MY=24,CW=PW-MX*2;
     const pal=PALETTES[selColor];
-
-    // 表紙
     msg.textContent='表紙を描画中...';await tick();
-    const cvs=document.createElement('canvas');cvs.width=420;cvs.height=595;
-    renderCover(cvs,selCover,selColor,m.title||'てびき',customPhoto);
-    doc.addImage(cvs.toDataURL('image/jpeg',.93),'JPEG',0,0,PW,PH);
-
-    // 本文ページ
+    const cc=document.createElement('canvas');cc.width=420;cc.height=595;
+    renderCover(cc,selCover,selColor,m.title||'てびき');
+    doc.addImage(cc.toDataURL('image/jpeg',.93),'JPEG',0,0,PW,PH);
     msg.textContent='本文を組版中...';await tick();
-    doc.addPage();
-    doc.setFillColor(...h2r(pal.bg));doc.rect(0,0,PW,PH,'F');
-
-    // タイトル帯
-    const [ar,ag,ab]=h2r(pal.accent);
+    doc.addPage();doc.setFillColor(...h2r(pal.bg));doc.rect(0,0,PW,PH,'F');
+    const[ar,ag,ab]=h2r(pal.accent);
     doc.setFillColor(ar,ag,ab);doc.rect(MX,MY-3,CW,1.2,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(20);
-    doc.setTextColor(...h2r(pal.accent));
+    doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...h2r(pal.accent));
     doc.text(safe(m.title||'てびき'),MX,MY+9);
-    if(m.tags&&m.tags.length){
-      doc.setFont('helvetica','normal');doc.setFontSize(9);
-      doc.setTextColor(...h2r(pal.sub));
-      doc.text(safe(m.tags.join(' / ')),MX,MY+17);
-    }
-    let y=MY+(m.tags&&m.tags.length?28:22);
-
-    function newPageIfNeeded(need){
-      if(y+need>PH-24){
-        doc.addPage();
-        doc.setFillColor(...h2r(pal.bg));doc.rect(0,0,PW,PH,'F');
-        y=MY;return true;
-      }
-      return false;
-    }
-
-    let stepN=0;
+    if(m.tags&&m.tags.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...h2r(pal.sub));doc.text(safe(m.tags.join(' / ')),MX,MY+17)}
+    let y=MY+(m.tags?.length?28:22);let stepN=0;
+    function chkPage(need){if(y+need>PH-24){doc.addPage();doc.setFillColor(...h2r(pal.bg));doc.rect(0,0,PW,PH,'F');y=MY}}
     for(const b of m.blocks){
-      if(b.type==='h2'){
-        newPageIfNeeded(18);y+=4;
-        doc.setFillColor(ar,ag,ab);doc.rect(MX,y,2.5,9,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(14);
-        doc.setTextColor(...h2r(pal.text));
-        doc.text(safe(b.val||''),MX+6,y+7);
-        y+=16;
-      }else if(b.type==='h3'){
-        newPageIfNeeded(12);y+=2;
-        doc.setFont('helvetica','bold');doc.setFontSize(11);
-        doc.setTextColor(...h2r(pal.sub));
-        doc.text(safe(b.val||''),MX,y+5);y+=11;
-      }else if(b.type==='step'){
-        stepN++;
-        const lines=doc.splitTextToSize(safe(b.val||''),CW-14);
-        const need=Math.max(12,lines.length*5.5)+4;
-        newPageIfNeeded(need);
-        const cr=4,cx=MX+cr,cy=y+cr+1;
-        doc.setFillColor(ar,ag,ab);doc.circle(cx,cy,cr,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
-        doc.text(String(stepN),cx,cy+2.2,'',0,'center');
-        doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...h2r(pal.text));
-        doc.text(lines,MX+12,y+4.5);
-        y+=need;
-      }else if(b.type==='text'){
-        const lines=doc.splitTextToSize(safe(b.val||''),CW);
-        const need=lines.length*5.2+5;
-        newPageIfNeeded(need);
-        doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...h2r(pal.text));
-        doc.text(lines,MX,y+4);y+=need;
-      }else if(b.type==='note'){
-        const lines=doc.splitTextToSize(safe(b.val||''),CW-10);
-        const bh=Math.max(12,lines.length*5)+6;
-        newPageIfNeeded(bh+4);
-        const [dr,dg,db2]=h2r(pal.deco);
-        doc.setFillColor(dr,dg,db2,.18);
-        doc.roundedRect(MX,y,CW,bh,1,1,'F');
-        doc.setFillColor(ar,ag,ab);doc.rect(MX,y,2.5,bh,'F');
-        doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(...h2r(pal.sub));
-        doc.text(lines,MX+6,y+6.5);
-        y+=bh+5;
-      }
+      if(b.type==='h2'){chkPage(18);y+=4;doc.setFillColor(ar,ag,ab);doc.rect(MX,y,2.5,9,'F');doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...h2r(pal.text));doc.text(safe(b.val||''),MX+6,y+7);y+=16}
+      else if(b.type==='h3'){chkPage(12);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...h2r(pal.sub));doc.text(safe(b.val||''),MX,y+5);y+=11}
+      else if(b.type==='step'){stepN++;const lines=doc.splitTextToSize(safe(b.val||''),CW-14);const need=Math.max(12,lines.length*5.5)+4;chkPage(need);const cr=4,cx=MX+cr,cy=y+cr+1;doc.setFillColor(ar,ag,ab);doc.circle(cx,cy,cr,'F');doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text(String(stepN),cx,cy+2.2,'',0,'center');doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...h2r(pal.text));doc.text(lines,MX+12,y+4.5);y+=need}
+      else if(b.type==='text'){const lines=doc.splitTextToSize(safe(b.val||''),CW);chkPage(lines.length*5.2+5);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...h2r(pal.text));doc.text(lines,MX,y+4);y+=lines.length*5.2+5}
+      else if(b.type==='note'){const lines=doc.splitTextToSize(safe(b.val||''),CW-10);const bh=Math.max(12,lines.length*5)+6;chkPage(bh+4);const[dr,dg,db2]=h2r(pal.deco);doc.setFillColor(dr,dg,db2,.18);doc.roundedRect(MX,y,CW,bh,1,1,'F');doc.setFillColor(ar,ag,ab);doc.rect(MX,y,2.5,bh,'F');doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(...h2r(pal.sub));doc.text(lines,MX+6,y+6.5);y+=bh+5}
     }
-
-    // フッター
-    y+=10;if(y<PH-18){
-      doc.setFillColor(...h2r(pal.accent));doc.rect(MX,y,CW,.5,'F');
-      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...h2r(pal.sub));
-      doc.text('\u25b2  tebiki',PW/2,y+6,{align:'center'});
-    }
-
-    // 裏表紙
+    y+=10;if(y<PH-18){doc.setFillColor(...h2r(pal.accent));doc.rect(MX,y,CW,.5,'F');doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...h2r(pal.sub));doc.text('\u25b2  tebiki',PW/2,y+6,{align:'center'})}
     doc.addPage();
     const bc=document.createElement('canvas');bc.width=420;bc.height=595;
-    const bctx=bc.getContext('2d');
-    bctx.fillStyle=pal.accent;bctx.fillRect(0,0,420,595);
-    bctx.fillStyle='rgba(255,255,255,.06)';
-    const rr=rng(123);
-    for(let i=0;i<14;i++)drawLeaf(bctx,rr()*420,rr()*595,30+rr()*30,rr()*Math.PI*2,'rgba(255,255,255,.2)');
-    bctx.fillStyle='rgba(255,255,255,.85)';
-    bctx.font=`bold ${420*.32}px sans-serif`;
-    bctx.textAlign='center';bctx.textBaseline='middle';
-    bctx.globalAlpha=.12;bctx.fillText('▲',210,280);bctx.globalAlpha=1;
-    bctx.font=`500 22px 'Zen Kaku Gothic New',sans-serif`;
-    bctx.fillStyle='rgba(255,255,255,.9)';
-    bctx.fillText('▲  てびき',210,490);
+    const bx=bc.getContext('2d');bx.fillStyle=pal.accent;bx.fillRect(0,0,420,595);
+    const rr=rng(123);for(let i=0;i<14;i++)drawLeaf(bx,rr()*420,rr()*595,30+rr()*30,rr()*Math.PI*2,'rgba(255,255,255,.2)');
+    bx.font=`bold ${420*.32}px sans-serif`;bx.fillStyle='#fff';bx.textAlign='center';bx.textBaseline='middle';
+    bx.globalAlpha=.12;bx.fillText('▲',210,280);bx.globalAlpha=1;
+    bx.font=`500 22px 'Zen Kaku Gothic New',sans-serif`;bx.fillStyle='rgba(255,255,255,.9)';bx.fillText('▲  てびき',210,490);
     doc.addImage(bc.toDataURL('image/jpeg',.93),'JPEG',0,0,PW,PH);
-
     msg.textContent='ダウンロード中...';await tick();
-    const fname=safe(m.title||'tebiki').replace(/\s+/g,'_')+'_tebiki.pdf';
-    doc.save(fname);
-    msg.textContent='ダウンロード完了！';
-    setTimeout(()=>{msg.textContent=''},3000);
-  }catch(err){
-    console.error(err);msg.textContent='エラー: '+err.message;
-  }finally{btn.disabled=false}
+    doc.save(safe(m.title||'tebiki').replace(/\s+/g,'_')+'_tebiki.pdf');
+    msg.textContent='ダウンロード完了！';setTimeout(()=>{msg.textContent=''},3000);
+  }catch(err){console.error(err);msg.textContent='エラー: '+err.message}
+  finally{btn.disabled=false}
 }
-function tick(){return new Promise(r=>setTimeout(r,20))}
 
-/* ═══════════════════════════════════════
-   PWA
-═══════════════════════════════════════ */
 let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault();deferredPrompt=e;
-  document.getElementById('pwa-banner').classList.remove('hidden');
-});
-document.getElementById('pwa-install-btn').onclick=async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();
-  const{outcome}=await deferredPrompt.userChoice;
-  deferredPrompt=null;
-  document.getElementById('pwa-banner').classList.add('hidden');
-};
-document.getElementById('pwa-close').onclick=()=>{
-  document.getElementById('pwa-banner').classList.add('hidden');
-};
-window.addEventListener('appinstalled',()=>{
-  document.getElementById('pwa-banner').classList.add('hidden');
-});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('pwa-banner').classList.remove('hidden')});
+document.getElementById('pwa-ok').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('pwa-banner').classList.add('hidden')};
+document.getElementById('pwa-x').onclick=()=>document.getElementById('pwa-banner').classList.add('hidden');
+window.addEventListener('appinstalled',()=>document.getElementById('pwa-banner').classList.add('hidden'));
 
-/* ═══════════════════════════════════════
-   EVENTS
-═══════════════════════════════════════ */
 document.getElementById('new-btn').onclick=newManual;
 document.getElementById('nav-new').onclick=newManual;
-document.getElementById('nav-home').onclick=()=>goTo('home','back');
-document.getElementById('nav-list').onclick=()=>goTo('home','back');
-document.getElementById('ed-back').onclick=()=>{autoSave();goTo('home','back')};
-document.getElementById('to-export').onclick=()=>{autoSave();goTo('export')};
-document.getElementById('exp-back').onclick=()=>goTo('editor','back');
+document.getElementById('nav-home').onclick=goHome;
+document.getElementById('nav-list').onclick=goHome;
+document.getElementById('ed-back').onclick=goHome;
+document.getElementById('to-export').onclick=goExport;
+document.getElementById('exp-back').onclick=()=>goTo('editor');
 document.getElementById('pdf-btn').onclick=genPDF;
 document.getElementById('ed-title').addEventListener('input',schedSave);
 document.querySelectorAll('.tag').forEach(t=>t.addEventListener('click',()=>{t.classList.toggle('on');schedSave()}));
 document.querySelectorAll('.bbtn').forEach(btn=>btn.addEventListener('click',()=>addBlock(btn.dataset.t)));
 document.getElementById('photo-drop').onclick=()=>document.getElementById('photo-input').click();
-document.getElementById('photo-input').onchange=function(){
-  const f=this.files[0];if(!f)return;
-  const img=new Image();img.onload=()=>{customPhoto=img;initExport()};
-  img.src=URL.createObjectURL(f);
-};
+document.getElementById('photo-input').onchange=function(){const f=this.files[0];if(!f)return;const img=new Image();img.onload=()=>{customPhoto=img;initExport()};img.src=URL.createObjectURL(f)};
 
-/* ── INIT ── */
 renderHome();
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));
-}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));
 </script>
 </body>
 </html>
