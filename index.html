@@ -436,81 +436,75 @@ function tick(){return new Promise(r=>setTimeout(r,20))}
 
 /* Canvas で1ページ分描いてJPEGデータURLを返す */
 function renderPage(blocks,pal,title,tags,pageBlocks){
-  const W=1240,H=1754; /* A4 @ 150dpi */
+  const W=2480,H=3508; /* A4 @ 300dpi */
   const c=document.createElement('canvas');c.width=W;c.height=H;
   const ctx=c.getContext('2d');
-  /* 背景 */
   ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
-  const MX=80,MY=90,CW=W-MX*2;
-  /* タイトル帯（1ページ目のみ） */
+  const MX=160,MY=180,CW=W-MX*2;
   let y=MY;
   if(title!==null){
-    ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,CW,4);
-    y+=16;
-    ctx.font=`500 52px 'Zen Kaku Gothic New',sans-serif`;
+    ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,CW,8);
+    y+=32;
+    ctx.font=`500 104px 'Zen Kaku Gothic New',sans-serif`;
     ctx.fillStyle=pal.accent;ctx.textBaseline='top';
-    ctx.fillText(title||'てびき',MX,y);y+=68;
+    ctx.fillText(title||'てびき',MX,y);y+=136;
     if(tags&&tags.length){
-      ctx.font=`400 28px 'Zen Kaku Gothic New',sans-serif`;
-      ctx.fillStyle=pal.sub;ctx.fillText(tags.join(' / '),MX,y);y+=44;
+      ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;
+      ctx.fillStyle=pal.sub;ctx.fillText(tags.join(' / '),MX,y);y+=88;
     }
-    y+=20;
+    y+=40;
   }
   let stepN=pageBlocks._stepOffset||0;
   for(const b of pageBlocks){
     if(b.type==='h2'){
-      y+=14;
-      ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,8,36);
-      ctx.font=`500 36px 'Shippori Mincho',serif`;
+      y+=28;
+      ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,16,72);
+      ctx.font=`500 72px 'Shippori Mincho',serif`;
       ctx.fillStyle=pal.text;ctx.textBaseline='top';
-      ctx.fillText(b.val||'',MX+20,y+2);y+=56;
+      ctx.fillText(b.val||'',MX+40,y+4);y+=112;
     }else if(b.type==='h3'){
-      y+=8;
-      ctx.font=`500 28px 'Zen Kaku Gothic New',sans-serif`;
+      y+=16;
+      ctx.font=`500 56px 'Zen Kaku Gothic New',sans-serif`;
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';
-      ctx.fillText(b.val||'',MX,y);y+=42;
+      ctx.fillText(b.val||'',MX,y);y+=84;
     }else if(b.type==='step'){
       stepN++;
-      /* 丸数字 */
-      ctx.beginPath();ctx.arc(MX+18,y+18,18,0,Math.PI*2);
+      ctx.beginPath();ctx.arc(MX+36,y+36,36,0,Math.PI*2);
       ctx.fillStyle=pal.accent;ctx.fill();
-      ctx.font=`500 20px 'Zen Kaku Gothic New',sans-serif`;
+      ctx.font=`500 40px 'Zen Kaku Gothic New',sans-serif`;
       ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(String(stepN),MX+18,y+18);
+      ctx.fillText(String(stepN),MX+36,y+36);
       ctx.textAlign='left';
-      /* テキスト折り返し */
-      ctx.font=`400 30px 'Zen Kaku Gothic New',sans-serif`;
+      ctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;
       ctx.fillStyle=pal.text;ctx.textBaseline='top';
-      const tw=CW-52;
+      const tw=CW-104;
       const wrapped=wrapText(ctx,b.val||'',tw);
-      wrapped.forEach((line,i)=>ctx.fillText(line,MX+52,y+i*42));
-      y+=Math.max(42,wrapped.length*42)+14;
+      wrapped.forEach((line,i)=>ctx.fillText(line,MX+104,y+i*84));
+      y+=Math.max(84,wrapped.length*84)+28;
     }else if(b.type==='text'){
-      ctx.font=`400 28px 'Zen Kaku Gothic New',sans-serif`;
+      ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;
       ctx.fillStyle=pal.text;ctx.textBaseline='top';
       const wrapped=wrapText(ctx,b.val||'',CW);
-      wrapped.forEach((line,i)=>ctx.fillText(line,MX,y+i*40));
-      y+=wrapped.length*40+14;
+      wrapped.forEach((line,i)=>ctx.fillText(line,MX,y+i*80));
+      y+=wrapped.length*80+28;
     }else if(b.type==='note'){
-      const wrapped=wrapText(ctx,b.val||'',CW-28);
-      const bh=Math.max(60,wrapped.length*38)+24;
-      /* 背景 */
+      ctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
+      const wrapped=wrapText(ctx,b.val||'',CW-56);
+      const bh=Math.max(120,wrapped.length*76)+48;
       ctx.fillStyle=hexAlpha(pal.deco,.15);
-      roundRect(ctx,MX,y,CW,bh,6);ctx.fill();
-      ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,6,bh);
-      ctx.font=`400 26px 'Zen Kaku Gothic New',sans-serif`;
+      roundRect(ctx,MX,y,CW,bh,12);ctx.fill();
+      ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,12,bh);
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';
-      wrapped.forEach((line,i)=>ctx.fillText(line,MX+20,y+14+i*36));
-      y+=bh+14;
+      wrapped.forEach((line,i)=>ctx.fillText(line,MX+40,y+28+i*72));
+      y+=bh+28;
     }
   }
-  /* フッター */
-  ctx.fillStyle=pal.accent;ctx.fillRect(MX,H-60,CW,2);
-  ctx.font=`400 22px 'Zen Kaku Gothic New',sans-serif`;
+  ctx.fillStyle=pal.accent;ctx.fillRect(MX,H-120,CW,4);
+  ctx.font=`400 44px 'Zen Kaku Gothic New',sans-serif`;
   ctx.fillStyle=pal.sub;ctx.textAlign='center';ctx.textBaseline='top';
-  ctx.fillText('▲  てびき',W/2,H-48);
+  ctx.fillText('▲  てびき',W/2,H-96);
   ctx.textAlign='left';
-  return c.toDataURL('image/jpeg',.92);
+  return c.toDataURL('image/jpeg',.95);
 }
 
 function wrapText(ctx,text,maxW){
@@ -534,15 +528,15 @@ function roundRect(ctx,x,y,w,h,r){
 
 /* ブロック群をページ単位に分割（高さ推定） */
 function paginateBlocks(blocks){
-  const MAX=1580;
+  const MAX=3160;
   const pages=[];let cur=[];let h=0;
   function estH(b){
-    if(b.type==='h2')return 70;
-    if(b.type==='h3')return 50;
-    if(b.type==='step')return Math.max(56,Math.ceil((b.val||'').length/20)*42+14);
-    if(b.type==='text')return Math.ceil((b.val||'').length/28)*40+14;
-    if(b.type==='note')return Math.max(74,Math.ceil((b.val||'').length/26)*36+38);
-    return 40;
+    if(b.type==='h2')return 140;
+    if(b.type==='h3')return 100;
+    if(b.type==='step')return Math.max(112,Math.ceil((b.val||'').length/18)*84+28);
+    if(b.type==='text')return Math.ceil((b.val||'').length/24)*80+28;
+    if(b.type==='note')return Math.max(148,Math.ceil((b.val||'').length/22)*72+76);
+    return 80;
   }
   for(const b of blocks){
     const bh=estH(b);
@@ -572,9 +566,9 @@ async function genPDF(){
 
     /* 表紙 */
     msg.textContent='表紙を描画中...';await tick();
-    const cc=document.createElement('canvas');cc.width=420;cc.height=595;
+    const cc=document.createElement('canvas');cc.width=2480;cc.height=3508;
     renderCover(cc,selCover,selColor,m.title||'てびき');
-    doc.addImage(cc.toDataURL('image/jpeg',.93),'JPEG',0,0,PW,PH);
+    doc.addImage(cc.toDataURL('image/jpeg',.95),'JPEG',0,0,PW,PH);
 
     /* 本文ページ（Canvasで日本語描画） */
     msg.textContent='本文を組版中...';await tick();
@@ -593,16 +587,16 @@ async function genPDF(){
 
     /* 裏表紙 */
     doc.addPage();
-    const bc=document.createElement('canvas');bc.width=420;bc.height=595;
+    const bc=document.createElement('canvas');bc.width=2480;bc.height=3508;
     const bx=bc.getContext('2d');
-    bx.fillStyle=pal.accent;bx.fillRect(0,0,420,595);
+    bx.fillStyle=pal.accent;bx.fillRect(0,0,2480,3508);
     const rr=rng(123);
-    for(let i=0;i<14;i++)drawLeaf(bx,rr()*420,rr()*595,30+rr()*30,rr()*Math.PI*2,'rgba(255,255,255,.2)');
-    bx.globalAlpha=.12;bx.font='bold 130px sans-serif';bx.fillStyle='#fff';
-    bx.textAlign='center';bx.textBaseline='middle';bx.fillText('▲',210,280);bx.globalAlpha=1;
-    bx.font=`500 22px 'Zen Kaku Gothic New',sans-serif`;
-    bx.fillStyle='rgba(255,255,255,.9)';bx.fillText('▲  てびき',210,490);
-    doc.addImage(bc.toDataURL('image/jpeg',.93),'JPEG',0,0,PW,PH);
+    for(let i=0;i<14;i++)drawLeaf(bx,rr()*2480,rr()*3508,180+rr()*180,rr()*Math.PI*2,'rgba(255,255,255,.2)');
+    bx.globalAlpha=.12;bx.font='bold 780px sans-serif';bx.fillStyle='#fff';
+    bx.textAlign='center';bx.textBaseline='middle';bx.fillText('▲',1240,1680);bx.globalAlpha=1;
+    bx.font=`500 130px 'Zen Kaku Gothic New',sans-serif`;
+    bx.fillStyle='rgba(255,255,255,.9)';bx.fillText('▲  てびき',1240,2940);
+    doc.addImage(bc.toDataURL('image/jpeg',.95),'JPEG',0,0,PW,PH);
 
     msg.textContent='ダウンロード中...';await tick();
     const fname=(m.title||'tebiki').replace(/[^\w\u3000-\u9FFF]/g,'_')+'_tebiki.pdf';
