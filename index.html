@@ -107,8 +107,12 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
 .blk-img-add{margin-top:6px;padding:4px 10px;border-radius:8px;border:1px dashed var(--paper3);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:inline-flex;align-items:center;gap:4px}
 .blk-img-add:hover{border-color:var(--accent2);color:var(--accent)}
 /* ③ reference badge */
-.ref-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);border:1px solid var(--accent2);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--accent);cursor:pointer;margin:2px 2px 0 0;user-select:none}
+.ref-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);border:1px solid var(--accent2);border-radius:20px;padding:3px 8px;font-size:11px;color:var(--accent);cursor:pointer;margin:2px 2px 0 0;user-select:none}
 .ref-badge:hover{background:var(--accent);color:#fff}
+.ref-num{font-weight:600;font-size:13px;line-height:1}
+.ref-label{font-size:10px;opacity:.8;max-width:80px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ref-del{opacity:.5;font-size:12px;margin-left:2px;line-height:1}
+.ref-del:hover{opacity:1}
 .ref-section{margin-top:6px;display:flex;flex-wrap:wrap;gap:2px;align-items:center}
 .ref-add-btn{font-size:10px;color:var(--ink3);background:none;border:1px dashed var(--paper3);border-radius:20px;padding:2px 8px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif}
 .ref-add-btn:hover{border-color:var(--accent2);color:var(--accent)}
@@ -421,32 +425,80 @@ function mkBlk(b){
   return d;
 }
 
-/* ③ 参照バッジ生成（refId = ブロックのdata-id） */
+/* ③ 参照番号の丸数字変換 */
+const CIRCLED='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+function circled(n){return n<=20?CIRCLED[n-1]:`(${n})`}
+
+/* ブロック内の全バッジを再連番する */
+function renumRefs(blkEl){
+  blkEl.querySelectorAll('.ref-badge').forEach((badge,i)=>{
+    const num=i+1;
+    badge.dataset.refNum=String(num);
+    /* ラベルノードを作り直す */
+    const numSpan=badge.querySelector('.ref-num');
+    if(numSpan)numSpan.textContent=circled(num);
+    const labelSpan=badge.querySelector('.ref-label');
+    if(labelSpan)updateRefLabel(labelSpan,badge.dataset.refId);
+  });
+}
+
 function mkRefBadge(refId){
   const badge=document.createElement('span');
-  badge.className='ref-badge';badge.dataset.refId=refId;
+  badge.className='ref-badge';badge.dataset.refId=refId;badge.dataset.refNum='1';
+  badge.title='タップでジャンプ・長押しで番号をコピー';
+
+  const numSpan=document.createElement('span');numSpan.className='ref-num';numSpan.textContent=circled(1);
+  const labelSpan=document.createElement('span');labelSpan.className='ref-label';
+  updateRefLabel(labelSpan,refId);
+
+  const delSpan=document.createElement('span');
+  delSpan.textContent='×';delSpan.className='ref-del';
+  delSpan.onclick=e=>{
+    e.stopPropagation();
+    const blkEl=badge.closest('.blk');
+    badge.remove();
+    if(blkEl)renumRefs(blkEl);
+    schedSave();
+  };
+
+  badge.appendChild(numSpan);
+  badge.appendChild(labelSpan);
+  badge.appendChild(delSpan);
+
+  /* クリック → ジャンプ */
   badge.onclick=()=>scrollToBlock(refId);
-  updateBadgeLabel(badge,refId);
-  const x=document.createElement('span');
-  x.textContent=' ×';x.style.opacity='.6';x.style.cursor='pointer';
-  x.onclick=e=>{e.stopPropagation();badge.remove();schedSave()};
-  badge.appendChild(x);
+  /* 長押し → 番号をコピー */
+  let holdTimer=null;
+  badge.addEventListener('pointerdown',()=>{
+    holdTimer=setTimeout(()=>{
+      const sym=circled(Number(badge.dataset.refNum));
+      navigator.clipboard.writeText(sym).then(()=>{
+        const orig=numSpan.textContent;numSpan.textContent='✓';
+        setTimeout(()=>{numSpan.textContent=orig},1000);
+      });
+    },600);
+  });
+  badge.addEventListener('pointerup',()=>clearTimeout(holdTimer));
+  badge.addEventListener('pointercancel',()=>clearTimeout(holdTimer));
+
   return badge;
 }
-function updateBadgeLabel(badge,refId){
+
+function updateRefLabel(labelSpan,refId){
   const area=document.getElementById('blocks');
   const tgt=area?area.querySelector(`.blk[data-id="${refId}"]`):null;
-  if(!tgt){badge.prepend(document.createTextNode('⚠ 削除済'));return}
+  if(!tgt){labelSpan.textContent=' 削除済';return}
   const type=tgt.dataset.type;
   if(type==='step'){
     const sn=tgt.querySelector('.snum');
-    badge.prepend(document.createTextNode(`→ ステップ${sn?sn.textContent:'?'}`));
+    labelSpan.textContent=` ステップ${sn?sn.textContent:'?'}`;
   }else{
     const inp=tgt.querySelector('input,textarea');
-    const label=(inp?inp.value:'').slice(0,12)||'（空白）';
-    badge.prepend(document.createTextNode(`→ ${label}`));
+    const label=(inp?inp.value:'').slice(0,10)||'（空白）';
+    labelSpan.textContent=` ${label}`;
   }
 }
+
 function scrollToBlock(refId){
   const tgt=document.querySelector(`#blocks .blk[data-id="${refId}"]`);
   if(tgt)tgt.scrollIntoView({behavior:'smooth',block:'center'});
@@ -475,12 +527,12 @@ function openRefPicker(srcBlk,refSec){
     }
     item.onclick=()=>{
       const refId=blk.dataset.id;
-      /* 重複チェック */
       if([...refSec.querySelectorAll('.ref-badge')].some(b=>b.dataset.refId===refId)){
         modal.classList.add('hidden');return;
       }
       const badge=mkRefBadge(refId);
       refSec.insertBefore(badge,refSec.querySelector('.ref-add-btn'));
+      renumRefs(srcBlk); /* 連番を再計算 */
       modal.classList.add('hidden');
       schedSave();
     };
@@ -543,10 +595,13 @@ function endDrag(){
   document.querySelectorAll('.blk').forEach(s=>s.classList.remove('dot-top','dot-bot'));
   if(tgt&&tgt!==blk){const area=document.getElementById('blocks');if(pos==='before')area.insertBefore(blk,tgt);else tgt.after(blk)}
   renum();
-  /* ③ 参照バッジのラベルを並び替え後に再計算 */
-  document.querySelectorAll('.ref-badge').forEach(badge=>{
-    badge.childNodes[0].textContent='';
-    updateBadgeLabel(badge,badge.dataset.refId);
+  /* ③ 各ブロックの参照バッジラベルを並び替え後に再計算 */
+  document.querySelectorAll('#blocks .blk').forEach(blkEl=>{
+    blkEl.querySelectorAll('.ref-badge').forEach(badge=>{
+      const ls=badge.querySelector('.ref-label');
+      if(ls)updateRefLabel(ls,badge.dataset.refId);
+    });
+    renumRefs(blkEl);
   });
   schedSave();
   document.onmousemove=document.onmouseup=null;document.ontouchmove=document.ontouchend=null;dnd=null;
