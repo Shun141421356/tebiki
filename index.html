@@ -710,6 +710,16 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
   const idToNum={};let sn2=0;
   document.querySelectorAll('#blocks .blk').forEach(bl=>{if(bl.dataset.type==='step'){sn2++;idToNum[bl.dataset.id]=sn2}else{const inp=bl.querySelector('input,textarea');idToNum[bl.dataset.id]=(inp?inp.value:'').slice(0,10)||bl.dataset.type}});
 
+  /* 参照テキストを「参照①：ステップ2、参照②：ステップ3」形式で生成 */
+  function buildRefText(refs){
+    return refs.map((id,i)=>{
+      const sym=circled(i+1);
+      const n=idToNum[id];
+      const dest=typeof n==='number'?`ステップ${n}`:n||'?';
+      return `参照${sym}：${dest}`;
+    }).join('　');
+  }
+
   for(const b of pageBlocks){
     if(b.type==='h2'){
       y+=28;ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,16,72);
@@ -732,7 +742,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       /* ③ 参照 */
       if(b.refs&&b.refs.length){
         ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';
-        const refText='参照: '+b.refs.map(id=>{const n=idToNum[id];return typeof n==='number'?`ステップ${n}`:n||'?'}).join(', ');
+        const refText=buildRefText(b.refs);
         ctx.fillText(refText,MX+104,y+blockH);blockH+=60;
       }
       y+=blockH;
@@ -742,7 +752,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       wrapped.forEach((line,i)=>ctx.fillText(line,MX,y+i*80));
       let blockH=wrapped.length*80+28;
       if(b.img){const img=await loadImg(b.img);if(img){const iw=Math.min(img.width,CW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
-      if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.fillText('参照: '+b.refs.map(id=>{const n=idToNum[id];return typeof n==='number'?`ステップ${n}`:n||'?'}).join(', '),MX,y+blockH);blockH+=60}
+      if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='note'){
       ctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
