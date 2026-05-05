@@ -391,7 +391,8 @@ document.getElementById('login-btn').onclick=async()=>{
   btn.disabled=true;btn.textContent='確認中...';
   try{
     const hash=await sha256(pass);
-    const rows=await sb('GET','users',null,`?username=eq.${encodeURIComponent(username)}&password_hash=eq.${encodeURIComponent(hash)}&select=id,username,role`);
+    /* RPCでパラメータ化クエリ — SQLインジェクション対策 */
+    const rows=await sb('POST','rpc/verify_login',{p_username:username,p_password_hash:hash});
     if(!rows||!rows.length){err.textContent='ユーザー名またはパスワードが違います';return}
     onLogin(rows[0]);
   }catch(e){err.textContent='エラー: '+e.message}
@@ -590,7 +591,7 @@ function addBlock(type){
   initDnD();schedSave();
   setTimeout(()=>{const inp=el.querySelector('input,textarea');if(inp){ar(inp);inp.focus()}},10);
 }
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function ar(el){if(!el)return;el.style.height='auto';el.style.height=Math.max(el.scrollHeight,24)+'px'}
 function renum(){let n=0;document.querySelectorAll('#blocks .blk[data-type="step"] .snum').forEach(e=>e.textContent=++n)}
 
@@ -599,19 +600,32 @@ function mkBlk(b){
   d.className='blk blk-'+b.type;d.dataset.id=b.id;d.dataset.type=b.type;
   const handle=`<div class="bhandle"><svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.5"/><circle cx="7" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="7" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="7" cy="13" r="1.5"/></svg></div>`;
   const del=`<button class="bdel">×</button>`;
-  const v=esc(b.val||'');
-  if(b.type==='h2'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="見出し" value="${v}"></div>${del}`}
-  else if(b.type==='h3'){d.innerHTML=`${handle}<div class="bcont"><input placeholder="小見出し" value="${v}"></div>${del}`}
-  else if(b.type==='text'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力...">${v}</textarea></div>${del}`}
-  else if(b.type==='step'){
+
+  if(b.type==='h2'){
+    d.innerHTML=`${handle}<div class="bcont"><input placeholder="見出し"></div>${del}`;
+  }else if(b.type==='h3'){
+    d.innerHTML=`${handle}<div class="bcont"><input placeholder="小見出し"></div>${del}`;
+  }else if(b.type==='text'){
+    d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="テキストを入力..."></textarea></div>${del}`;
+  }else if(b.type==='step'){
     stepCnt++;
-    d.innerHTML=`${handle}<div class="bcont"><div class="step-row"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く...">${v}</textarea></div><div class="step-extras"></div></div>${del}`;
-  }else if(b.type==='note'){d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点...">${v}</textarea></div>${del}`}
+    d.innerHTML=`${handle}<div class="bcont"><div class="step-row"><div class="snum">${stepCnt}</div><textarea placeholder="手順を書く..."></textarea></div><div class="step-extras"></div></div>${del}`;
+  }else if(b.type==='note'){
+    d.innerHTML=`${handle}<div class="bcont"><textarea placeholder="メモ・注意点..."></textarea></div>${del}`;
+  }
+
+  /* ★ value/textContent はDOMで設定（XSS対策） */
+  const inp=d.querySelector('input,textarea');
+  if(inp){
+    if(inp.tagName==='INPUT') inp.value=b.val||'';
+    else inp.textContent=b.val||'';
+  }
 
   const extras=d.querySelector('.step-extras')||d.querySelector('.bcont');
   if(b.img){
     const iw=document.createElement('div');iw.className='blk-img-wrap';
-    iw.innerHTML=`<img src="${b.img}"><button class="blk-img-del">×</button>`;
+    iw.innerHTML=`<img><button class="blk-img-del">×</button>`;
+    iw.querySelector('img').src=b.img; /* srcはDOMで設定 */
     iw.querySelector('.blk-img-del').onclick=()=>{iw.remove();schedSave()};
     extras.appendChild(iw);
   }
@@ -628,7 +642,6 @@ function mkBlk(b){
   refSec.appendChild(refAddBtn);
   extras.appendChild(refSec);
 
-  const inp=d.querySelector('input,textarea');
   if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});if(inp.tagName==='TEXTAREA')ar(inp)}
   d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
   return d;
