@@ -346,14 +346,14 @@ const SB_URL='https://ihrwkvfzaocumfydviwg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlocndrdmZ6YW9jdW1meWR2aXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4OTY3MTksImV4cCI6MjA5MzQ3MjcxOX0.rZFEttFRPcToWHv-2HbBm7QALHPhCWyK00wchsj4vhE';
 
 async function sb(method,table,body,query=''){
+  const headers={
+    'apikey':SB_KEY,
+    'Authorization':'Bearer '+SB_KEY,
+    'Content-Type':'application/json',
+  };
+  if(method==='POST') headers['Prefer']='return=representation,resolution=merge-duplicates';
   const res=await fetch(`${SB_URL}/rest/v1/${table}${query}`,{
-    method,
-    headers:{
-      'apikey':SB_KEY,
-      'Authorization':'Bearer '+SB_KEY,
-      'Content-Type':'application/json',
-      'Prefer': method==='POST'?'return=representation':'return=representation'
-    },
+    method,headers,
     body:body?JSON.stringify(body):undefined
   });
   if(!res.ok){const e=await res.text();throw new Error(e)}
@@ -459,7 +459,11 @@ function goTo(name){
   if(name==='export')initExport();
   if(name==='admin')loadAdminUsers();
 }
-function goHome(){autoSave();goTo('home')}
+async function goHome(){
+  await autoSave();
+  goTo('home');
+  await loadManuals();
+}
 function goExport(){autoSave();goTo('export')}
 
 /* ═══ SUPABASE MANUALS ═══ */
@@ -491,7 +495,7 @@ async function upsertManual(m){
     id:m.id,user_id:currentUser.id,
     title:m.title,tags:m.tags,blocks:m.blocks,
     updated_at:new Date(m.updatedAt).toISOString()
-  },'?on_conflict=id');
+  },'?on_conflict=id&resolution=merge-duplicates');
 }
 
 async function deleteManual(id){
@@ -547,8 +551,12 @@ async function autoSave(){
   m.tags=[...document.querySelectorAll('.tag.on')].map(t=>t.dataset.v);
   m.blocks=collectBlocks();
   m.updatedAt=Date.now();
-  try{await upsertManual(m);flashToast()}
-  catch(e){document.getElementById('toast').textContent='保存失敗';flashToast();document.getElementById('toast').textContent='保存しました'}
+  try{
+    await upsertManual(m);
+    flashToast();
+  }catch(e){
+    console.error('autoSave error',e);
+  }
 }
 
 async function newManual(){
