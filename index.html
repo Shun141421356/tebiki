@@ -495,7 +495,7 @@ async function upsertManual(m){
     id:m.id,user_id:currentUser.id,
     title:m.title,tags:m.tags,blocks:m.blocks,
     updated_at:new Date(m.updatedAt).toISOString()
-  },'?on_conflict=id&resolution=merge-duplicates');
+  },'?on_conflict=id');
 }
 
 async function deleteManual(id){
