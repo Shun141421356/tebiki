@@ -892,16 +892,44 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
   return c.toDataURL('image/jpeg',.95);
 }
 
-function paginateBlocks(blocks){
-  const MAX=3160;const pages=[];let cur=[];let h=0;
-  function estH(b){const imgH=b.img?400:0;const refH=(b.refs&&b.refs.length)?60:0;
-    if(b.type==='h2')return 140;if(b.type==='h3')return 100;
-    if(b.type==='step')return Math.max(112,Math.ceil((b.val||'').length/18)*84+28)+imgH+refH;
-    if(b.type==='text')return Math.ceil((b.val||'').length/24)*80+28+imgH+refH;
-    if(b.type==='note')return Math.max(148,Math.ceil((b.val||'').length/22)*72+76)+imgH;
+/* 画像の実際の描画高さを計算（Canvasの幅に合わせてスケール） */
+async function measureImgH(src, maxW){
+  if(!src) return 0;
+  try{
+    const img = await loadImg(src);
+    if(!img) return 0;
+    const iw = Math.min(img.width, maxW);
+    return Math.round(img.height * (iw / img.width)) + 20; /* +20 は余白 */
+  }catch{return 0}
+}
+
+async function paginateBlocks(blocks){
+  const MAX=3160;
+  const CW=2480-160*2; /* renderPage と同じ計算 */
+
+  /* 各ブロックの高さを非同期で計算 */
+  const heights = await Promise.all(blocks.map(async b=>{
+    const textMaxW = b.type==='step' ? CW-104 : b.type==='note' ? CW-56 : CW;
+    /* テキスト行数を大まかに推定（Canvasなしなので文字数ベース） */
+    const charsPerLine = b.type==='step' ? 18 : b.type==='note' ? 22 : 24;
+    const lineH = b.type==='step' ? 84 : b.type==='note' ? 76 : 80;
+    const imgH = await measureImgH(b.img, textMaxW);
+    const refH = (b.refs&&b.refs.length) ? 60 : 0;
+    if(b.type==='h2') return 140;
+    if(b.type==='h3') return 100;
+    if(b.type==='step') return Math.max(112, Math.ceil((b.val||'').length/charsPerLine)*lineH+28) + imgH + refH;
+    if(b.type==='text') return Math.ceil((b.val||'').length/charsPerLine)*lineH+28 + imgH + refH;
+    if(b.type==='note') return Math.max(148, Math.ceil((b.val||'').length/charsPerLine)*lineH+76) + imgH;
     return 80;
-  }
-  for(const b of blocks){const bh=estH(b);if(h+bh>MAX&&cur.length){pages.push(cur);cur=[];h=0}cur.push(b);h+=bh}
+  }));
+
+  const pages=[];let cur=[];let h=0;
+  blocks.forEach((b,i)=>{
+    const bh=heights[i];
+    /* 1ブロックがMAXを超える場合は単独ページに */
+    if(h+bh>MAX && cur.length){pages.push(cur);cur=[];h=0}
+    cur.push(b);h+=bh;
+  });
   if(cur.length)pages.push(cur);
   let sn=0;pages.forEach(pg=>{pg._stepOffset=sn;pg.forEach(b=>{if(b.type==='step')sn++})});
   return pages.length?pages:[[]];
@@ -920,7 +948,7 @@ async function genPDF(){
     renderCover(cc,selCover,selColor,m.title||'てびき');
     doc.addImage(cc.toDataURL('image/jpeg',.95),'JPEG',0,0,PW,PH);
     msg.textContent='本文を組版中...';await tick();
-    const pages=paginateBlocks(m.blocks||[]);
+    const pages=await paginateBlocks(m.blocks||[]);
     for(let i=0;i<pages.length;i++){
       doc.addPage();
       const imgData=await renderPage(pal,i===0?(m.title||'てびき'):null,i===0?(m.tags||[]):null,pages[i],pages[i]._stepOffset);
