@@ -901,7 +901,26 @@ function hexAlpha(hex,a){const[r,g,b]=h2r(hex);return`rgba(${r},${g},${b},${a})`
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath()}
 function tick(){return new Promise(r=>setTimeout(r,20))}
 function wrapText(ctx,text,maxW){if(!text)return[''];const lines=[];let cur='';for(const ch of text){if(ch==='\n'){lines.push(cur);cur='';continue}if(ctx.measureText(cur+ch).width>maxW){lines.push(cur);cur=ch}else cur+=ch}lines.push(cur);return lines.length?lines:[''] }
-function loadImg(src){return new Promise(res=>{if(!src){res(null);return}const img=new Image();img.onload=()=>res(img);img.onerror=()=>res(null);img.src=src})}
+/* 画像をBlobとして取得してからObjectURLに変換（Canvas汚染防止） */
+function loadImg(src){
+  return new Promise(async res=>{
+    if(!src){res(null);return}
+    try{
+      let objectUrl=src;
+      /* StorageのURLはfetchでBlobに変換してCORSを回避 */
+      if(src.startsWith('http')){
+        const r=await fetch(src,{headers:{'apikey':SB_KEY}});
+        if(!r.ok){res(null);return}
+        const blob=await r.blob();
+        objectUrl=URL.createObjectURL(blob);
+      }
+      const img=new Image();
+      img.onload=()=>res(img);
+      img.onerror=()=>res(null);
+      img.src=objectUrl;
+    }catch{res(null)}
+  });
+}
 
 async function renderPage(pal,title,tags,pageBlocks,stepOffset){
   const W=2480,H=3508;const c=document.createElement('canvas');c.width=W;c.height=H;
