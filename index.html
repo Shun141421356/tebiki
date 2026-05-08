@@ -590,9 +590,9 @@ function schedSave(){clearTimeout(saveTimer);saveTimer=setTimeout(autoSave,800)}
 function collectBlocks(){
   return[...document.querySelectorAll('#blocks .blk')].map(el=>{
     const inp=el.querySelector('input,textarea');
-    const imgEl=el.querySelector('.blk-img-wrap img');
+    const imgs=[...el.querySelectorAll('.blk-img-wrap img')].map(i=>i.src).filter(Boolean);
     const refs=[...el.querySelectorAll('.ref-badge')].map(r=>r.dataset.refId);
-    return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:'',img:imgEl?imgEl.src:'',refs};
+    return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:'',imgs,refs};
   });
 }
 
@@ -626,7 +626,7 @@ async function newManual(){
   if(!currentUser)return;
   const id='m'+Date.now();
   const now=Date.now();
-  const m={id,title:'',tags:[],blocks:[{id:'b'+now,type:'step',val:'',img:'',refs:[]}],createdAt:now,updatedAt:now};
+  const m={id,title:'',tags:[],blocks:[{id:'b'+now,type:'step',val:'',imgs:[],refs:[]}],createdAt:now,updatedAt:now};
   manuals.unshift(m);
   curBaseUpdatedAt=null; /* 新規作成は競合チェック不要 */
   try{await upsertManual(m,true)}catch(e){alert('作成エラー: '+e.message);return}
@@ -652,7 +652,7 @@ function renderBlocks(blocks){
 }
 function addBlock(type){
   const id='b'+Date.now();
-  const el=mkBlk({id,type,val:'',img:'',refs:[]});
+  const el=mkBlk({id,type,val:'',imgs:[],refs:[]});
   document.getElementById('blocks').appendChild(el);
   initDnD();schedSave();
   setTimeout(()=>{const inp=el.querySelector('input,textarea');if(inp){ar(inp);inp.focus()}},10);
@@ -688,13 +688,11 @@ function mkBlk(b){
   }
 
   const extras=d.querySelector('.step-extras')||d.querySelector('.bcont');
-  if(b.img){
-    const iw=document.createElement('div');iw.className='blk-img-wrap';
-    iw.innerHTML=`<img><button class="blk-img-del">×</button>`;
-    iw.querySelector('img').src=b.img; /* srcはDOMで設定 */
-    iw.querySelector('.blk-img-del').onclick=()=>{iw.remove();schedSave()};
-    extras.appendChild(iw);
-  }
+
+  /* ④ 既存画像を複数表示（imgs配列、後方互換でimgも対応） */
+  const imgList=b.imgs||(b.img?[b.img]:[]);
+  imgList.forEach(url=>{if(url)extras.appendChild(mkImgWrap(url))});
+
   const addImgBtn=document.createElement('button');
   addImgBtn.className='blk-img-add';addImgBtn.innerHTML='📷 写真を追加';
   addImgBtn.onclick=()=>openBlkPhoto(d,addImgBtn);
@@ -711,6 +709,19 @@ function mkBlk(b){
   if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});if(inp.tagName==='TEXTAREA')ar(inp)}
   d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
   return d;
+}
+
+/* 画像ラッパー要素を生成 */
+function mkImgWrap(url){
+  const iw=document.createElement('div');iw.className='blk-img-wrap';
+  const img=document.createElement('img');img.src=url;
+  const delBtn=document.createElement('button');delBtn.className='blk-img-del';delBtn.textContent='×';
+  delBtn.onclick=async()=>{
+    await deleteImageFromStorage(url);
+    iw.remove();schedSave();
+  };
+  iw.appendChild(img);iw.appendChild(delBtn);
+  return iw;
 }
 
 /* ═══ REF SYSTEM ═══ */
@@ -823,29 +834,13 @@ function openBlkPhoto(blkEl,addBtn){blkPhotoTarget=blkEl;blkPhotoAddBtn=addBtn;d
 document.getElementById('blk-photo-input').onchange=async function(){
   const f=this.files[0];if(!f||!blkPhotoTarget)return;
   this.value='';
-  /* アップロード中表示 */
   const addBtn=blkPhotoAddBtn;
   addBtn.textContent='📤 アップロード中...';addBtn.disabled=true;
   try{
     const url=await uploadImageToStorage(f);
     const extras=blkPhotoTarget.querySelector('.step-extras')||blkPhotoTarget.querySelector('.bcont');
-    /* 既存画像を削除（古いStorageファイルも削除） */
-    const oldWrap=extras.querySelector('.blk-img-wrap');
-    if(oldWrap){
-      const oldUrl=oldWrap.querySelector('img')?.src||'';
-      await deleteImageFromStorage(oldUrl);
-      oldWrap.remove();
-    }
-    /* 新しい画像ラッパーを追加 */
-    const iw=document.createElement('div');iw.className='blk-img-wrap';
-    const img=document.createElement('img');img.src=url;
-    const delBtn=document.createElement('button');delBtn.className='blk-img-del';delBtn.textContent='×';
-    delBtn.onclick=async()=>{
-      await deleteImageFromStorage(url);
-      iw.remove();schedSave();
-    };
-    iw.appendChild(img);iw.appendChild(delBtn);
-    extras.insertBefore(iw,addBtn);
+    /* 既存画像は消さず、追加ボタンの直前に挿入 */
+    extras.insertBefore(mkImgWrap(url),addBtn);
     schedSave();
   }catch(e){
     alert(e.message);
@@ -1007,25 +1002,29 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       ctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.text;ctx.textBaseline='top';
       const wrapped=wrapText(ctx,b.val||'',CW-104);wrapped.forEach((line,i)=>ctx.fillText(line,MX+104,y+i*84));
       let blockH=Math.max(84,wrapped.length*84)+28;
-      if(b.img){const img=await loadImg(b.img);if(img){const iw=Math.min(img.width,CW-104),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
+      const imgs_s=b.imgs||(b.img?[b.img]:[]);
+      for(const src of imgs_s){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-104),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX+104,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='text'){
       ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.text;ctx.textBaseline='top';
       const wrapped=wrapText(ctx,b.val||'',CW);wrapped.forEach((line,i)=>ctx.fillText(line,MX,y+i*80));
       let blockH=wrapped.length*80+28;
-      if(b.img){const img=await loadImg(b.img);if(img){const iw=Math.min(img.width,CW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
+      const imgs_t=b.imgs||(b.img?[b.img]:[]);
+      for(const src of imgs_t){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='note'){
       ctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
+      const imgs_n=b.imgs||(b.img?[b.img]:[]);
       const wrapped=wrapText(ctx,b.val||'',CW-56);let bh=Math.max(120,wrapped.length*76)+48;
-      if(b.img)bh+=400;
+      /* note の画像高さを事前に加算 */
+      for(const src of imgs_n){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-56);bh+=img.height*(iw/img.width)+20}}
       ctx.fillStyle=hexAlpha(pal.deco,.15);roundRect(ctx,MX,y,CW,bh,12);ctx.fill();
       ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,12,bh);
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';wrapped.forEach((line,i)=>ctx.fillText(line,MX+40,y+28+i*72));
       let noteY=y+28+wrapped.length*72+20;
-      if(b.img){const img=await loadImg(b.img);if(img){const iw=Math.min(img.width,CW-56),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih)}}
+      for(const src of imgs_n){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-56),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
       y+=bh+28;
     }
   }
@@ -1055,8 +1054,10 @@ async function paginateBlocks(blocks){
     /* テキスト行数を大まかに推定（Canvasなしなので文字数ベース） */
     const charsPerLine = b.type==='step' ? 18 : b.type==='note' ? 22 : 24;
     const lineH = b.type==='step' ? 84 : b.type==='note' ? 76 : 80;
-    const imgH = await measureImgH(b.img, textMaxW);
-    const refH = (b.refs&&b.refs.length) ? 60 : 0;
+    const imgUrls=b.imgs||(b.img?[b.img]:[]);
+    let imgH=0;
+    for(const src of imgUrls){imgH+=await measureImgH(src,textMaxW)}
+    const refH=(b.refs&&b.refs.length)?60:0;
     if(b.type==='h2') return 140;
     if(b.type==='h3') return 100;
     if(b.type==='step') return Math.max(112, Math.ceil((b.val||'').length/charsPerLine)*lineH+28) + imgH + refH;
