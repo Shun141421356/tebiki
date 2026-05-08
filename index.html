@@ -498,19 +498,11 @@ async function loadManuals(){
 function getM(id){return manuals.find(m=>m.id===id)}
 
 async function upsertManual(m){
-  const payload={
+  await sb('POST','manuals',{
     id:m.id,user_id:currentUser.id,
     title:m.title,tags:m.tags,blocks:m.blocks,
     updated_at:new Date(m.updatedAt).toISOString()
-  };
-  const size=JSON.stringify(payload).length;
-  if(size>800000){
-    /* 画像が大きすぎる場合は画像なしで保存してユーザーに通知 */
-    console.warn(`保存データが大きすぎます(${Math.round(size/1024)}KB)。画像を除いて保存します。`);
-    const blocksNoImg=m.blocks.map(b=>({...b,img:''}));
-    payload.blocks=blocksNoImg;
-  }
-  await sb('POST','manuals',payload,'?on_conflict=id');
+  },'?on_conflict=id');
 }
 
 async function deleteManual(id){
@@ -737,19 +729,70 @@ document.getElementById('ref-modal').onclick=e=>{if(e.target===e.currentTarget)e
 
 /* ═══ BLOCK PHOTO ═══ */
 let blkPhotoTarget=null,blkPhotoAddBtn=null;
+/* ═══ SUPABASE STORAGE ═══ */
+async function uploadImageToStorage(file){
+  /* ファイル名: userId/timestamp_originalname */
+  const ext=file.name.split('.').pop()||'jpg';
+  const path=`${currentUser.id}/${Date.now()}.${ext}`;
+  const res=await fetch(`${SB_URL}/storage/v1/object/tebiki-images/${path}`,{
+    method:'POST',
+    headers:{
+      'apikey':SB_KEY,
+      'Authorization':'Bearer '+SB_KEY,
+      'Content-Type':file.type||'image/jpeg',
+      'x-upsert':'true'
+    },
+    body:file
+  });
+  if(!res.ok){const e=await res.text();throw new Error('画像アップロード失敗: '+e)}
+  /* 公開URLを返す */
+  return `${SB_URL}/storage/v1/object/public/tebiki-images/${path}`;
+}
+
+async function deleteImageFromStorage(url){
+  if(!url||!url.includes('tebiki-images'))return;
+  const path=url.split('/tebiki-images/')[1];
+  if(!path)return;
+  await fetch(`${SB_URL}/storage/v1/object/tebiki-images/${path}`,{
+    method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  }).catch(()=>{}); /* 削除失敗は無視 */
+}
+
 function openBlkPhoto(blkEl,addBtn){blkPhotoTarget=blkEl;blkPhotoAddBtn=addBtn;document.getElementById('blk-photo-input').click()}
-document.getElementById('blk-photo-input').onchange=function(){
+
+document.getElementById('blk-photo-input').onchange=async function(){
   const f=this.files[0];if(!f||!blkPhotoTarget)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
+  this.value='';
+  /* アップロード中表示 */
+  const addBtn=blkPhotoAddBtn;
+  addBtn.textContent='📤 アップロード中...';addBtn.disabled=true;
+  try{
+    const url=await uploadImageToStorage(f);
     const extras=blkPhotoTarget.querySelector('.step-extras')||blkPhotoTarget.querySelector('.bcont');
-    const old=extras.querySelector('.blk-img-wrap');if(old)old.remove();
+    /* 既存画像を削除（古いStorageファイルも削除） */
+    const oldWrap=extras.querySelector('.blk-img-wrap');
+    if(oldWrap){
+      const oldUrl=oldWrap.querySelector('img')?.src||'';
+      await deleteImageFromStorage(oldUrl);
+      oldWrap.remove();
+    }
+    /* 新しい画像ラッパーを追加 */
     const iw=document.createElement('div');iw.className='blk-img-wrap';
-    iw.innerHTML=`<img src="${e.target.result}"><button class="blk-img-del">×</button>`;
-    iw.querySelector('.blk-img-del').onclick=()=>{iw.remove();schedSave()};
-    extras.insertBefore(iw,blkPhotoAddBtn);schedSave();
-  };
-  reader.readAsDataURL(f);this.value='';
+    const img=document.createElement('img');img.src=url;
+    const delBtn=document.createElement('button');delBtn.className='blk-img-del';delBtn.textContent='×';
+    delBtn.onclick=async()=>{
+      await deleteImageFromStorage(url);
+      iw.remove();schedSave();
+    };
+    iw.appendChild(img);iw.appendChild(delBtn);
+    extras.insertBefore(iw,addBtn);
+    schedSave();
+  }catch(e){
+    alert(e.message);
+  }finally{
+    addBtn.textContent='📷 写真を追加';addBtn.disabled=false;
+  }
 };
 
 /* ═══ DRAG & DROP ═══ */
