@@ -461,9 +461,15 @@ function goTo(name){
   if(name==='admin')loadAdminUsers();
 }
 async function goHome(){
-  await autoSave();
+  /* 保存は試みるが3秒でタイムアウト、失敗してもホームに戻る */
+  try{
+    await Promise.race([
+      autoSave(),
+      new Promise(r=>setTimeout(r,3000))
+    ]);
+  }catch(e){console.error('goHome save error',e)}
   goTo('home');
-  await loadManuals();
+  try{await loadManuals()}catch(e){console.error('goHome load error',e)}
 }
 function goExport(){autoSave();goTo('export')}
 
@@ -492,11 +498,19 @@ async function loadManuals(){
 function getM(id){return manuals.find(m=>m.id===id)}
 
 async function upsertManual(m){
-  await sb('POST','manuals',{
+  const payload={
     id:m.id,user_id:currentUser.id,
     title:m.title,tags:m.tags,blocks:m.blocks,
     updated_at:new Date(m.updatedAt).toISOString()
-  },'?on_conflict=id');
+  };
+  const size=JSON.stringify(payload).length;
+  if(size>800000){
+    /* 画像が大きすぎる場合は画像なしで保存してユーザーに通知 */
+    console.warn(`保存データが大きすぎます(${Math.round(size/1024)}KB)。画像を除いて保存します。`);
+    const blocksNoImg=m.blocks.map(b=>({...b,img:''}));
+    payload.blocks=blocksNoImg;
+  }
+  await sb('POST','manuals',payload,'?on_conflict=id');
 }
 
 async function deleteManual(id){
@@ -554,9 +568,16 @@ async function autoSave(){
   m.updatedAt=Date.now();
   try{
     await upsertManual(m);
+    const t=document.getElementById('toast');
+    t.textContent='保存しました';
     flashToast();
   }catch(e){
     console.error('autoSave error',e);
+    const t=document.getElementById('toast');
+    t.textContent='保存失敗 ('+e.message.slice(0,30)+')';
+    t.style.color='var(--danger)';
+    flashToast();
+    setTimeout(()=>{t.textContent='保存しました';t.style.color=''},3000);
   }
 }
 
