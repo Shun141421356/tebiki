@@ -456,7 +456,11 @@ function goTo(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('sc-'+name).classList.add('active');
   document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('on'));
-  if(name==='home'){document.getElementById('nav-home').classList.add('on')}
+  if(name==='home'){
+    document.getElementById('nav-home').classList.add('on');
+    /* ホーム表示のたびに最新データを取得 */
+    if(currentUser) loadManuals().catch(e=>console.error(e));
+  }
   if(name==='export')initExport();
   if(name==='admin')loadAdminUsers();
 }
@@ -497,12 +501,52 @@ async function loadManuals(){
 
 function getM(id){return manuals.find(m=>m.id===id)}
 
-async function upsertManual(m){
+/* ═══ 楽観的ロック ═══ */
+let curBaseUpdatedAt=null; /* 編集開始時点のupdated_at（競合検出の基準） */
+
+class ConflictError extends Error{
+  constructor(dbTs){super('conflict');this.dbTs=dbTs}
+}
+
+async function upsertManual(m,force=false){
+  if(!force && curBaseUpdatedAt){
+    const rows=await sb('GET','manuals',null,`?id=eq.${m.id}&select=updated_at`);
+    if(rows&&rows.length){
+      const dbTs=new Date(rows[0].updated_at).getTime();
+      if(dbTs>curBaseUpdatedAt) throw new ConflictError(dbTs);
+    }
+  }
   await sb('POST','manuals',{
     id:m.id,user_id:currentUser.id,
     title:m.title,tags:m.tags,blocks:m.blocks,
     updated_at:new Date(m.updatedAt).toISOString()
   },'?on_conflict=id');
+  curBaseUpdatedAt=m.updatedAt;
+}
+
+async function handleConflict(m,dbTs){
+  const dbTime=new Date(dbTs).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const choice=confirm(
+    '⚠️ 競合が検出されました\n\n'+
+    '別のデバイスで '+dbTime+' に保存されています。\n\n'+
+    '【OK】自分の編集内容で上書き保存する\n'+
+    '【キャンセル】最新データを読み込む（自分の編集は失われます）'
+  );
+  if(choice){
+    m.updatedAt=Date.now();
+    await upsertManual(m,true);
+    const t=document.getElementById('toast');t.textContent='上書き保存しました';flashToast();
+  }else{
+    await loadManuals();
+    const latest=getM(m.id);
+    if(latest){
+      curBaseUpdatedAt=latest.updatedAt;
+      document.getElementById('ed-title').value=latest.title||'';
+      document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('on',(latest.tags||[]).includes(t.dataset.v)));
+      renderBlocks(latest.blocks||[]);
+    }
+    const t=document.getElementById('toast');t.textContent='最新データを読み込みました';flashToast();
+  }
 }
 
 async function deleteManual(id){
@@ -561,29 +605,38 @@ async function autoSave(){
   try{
     await upsertManual(m);
     const t=document.getElementById('toast');
-    t.textContent='保存しました';
+    t.textContent='保存しました';t.style.color='';
     flashToast();
   }catch(e){
-    console.error('autoSave error',e);
-    const t=document.getElementById('toast');
-    t.textContent='保存失敗 ('+e.message.slice(0,30)+')';
-    t.style.color='var(--danger)';
-    flashToast();
-    setTimeout(()=>{t.textContent='保存しました';t.style.color=''},3000);
+    if(e instanceof ConflictError){
+      /* 競合 → ユーザーに選ばせる */
+      await handleConflict(m,e.dbTs);
+    }else{
+      console.error('autoSave error',e);
+      const t=document.getElementById('toast');
+      t.textContent='保存失敗 ('+e.message.slice(0,30)+')';
+      t.style.color='var(--danger)';
+      flashToast();
+      setTimeout(()=>{t.textContent='保存しました';t.style.color=''},3000);
+    }
   }
 }
 
 async function newManual(){
   if(!currentUser)return;
   const id='m'+Date.now();
-  const m={id,title:'',tags:[],blocks:[{id:'b'+Date.now(),type:'step',val:'',img:'',refs:[]}],createdAt:Date.now(),updatedAt:Date.now()};
+  const now=Date.now();
+  const m={id,title:'',tags:[],blocks:[{id:'b'+now,type:'step',val:'',img:'',refs:[]}],createdAt:now,updatedAt:now};
   manuals.unshift(m);
-  try{await upsertManual(m)}catch(e){alert('作成エラー: '+e.message);return}
+  curBaseUpdatedAt=null; /* 新規作成は競合チェック不要 */
+  try{await upsertManual(m,true)}catch(e){alert('作成エラー: '+e.message);return}
+  curBaseUpdatedAt=now;
   openManual(id);
 }
 
 function openManual(id){
   curId=id;const m=getM(id);
+  curBaseUpdatedAt=m.updatedAt; /* 楽観的ロック: 編集開始時点を記録 */
   document.getElementById('ed-title').value=m.title||'';
   document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('on',(m.tags||[]).includes(t.dataset.v)));
   renderBlocks(m.blocks||[]);goTo('editor');
@@ -1071,6 +1124,22 @@ const saved=loadSession();
 if(saved){onLogin(saved)}
 else{goTo('auth')}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW:',e));
+
+/* バックグラウンドから復帰したとき（スマホでタブ切り替えなど）に再同期 */
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && currentUser){
+    const homeActive=document.getElementById('sc-home').classList.contains('active');
+    if(homeActive) loadManuals().catch(e=>console.error(e));
+  }
+});
+
+/* ウィンドウにフォーカスが戻ったとき（PC）にも再同期 */
+window.addEventListener('focus',()=>{
+  if(currentUser){
+    const homeActive=document.getElementById('sc-home').classList.contains('active');
+    if(homeActive) loadManuals().catch(e=>console.error(e));
+  }
+});
 </script>
 </body>
 </html>
