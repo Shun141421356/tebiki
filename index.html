@@ -783,10 +783,17 @@ document.getElementById('ref-modal').onclick=e=>{if(e.target===e.currentTarget)e
 /* ═══ BLOCK PHOTO ═══ */
 let blkPhotoTarget=null,blkPhotoAddBtn=null;
 /* ═══ SUPABASE STORAGE ═══ */
+/* ランダム文字列生成（32文字の16進数） */
+function randomHex(){
+  const arr=new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 async function uploadImageToStorage(file){
-  /* ファイル名: userId/timestamp_originalname */
-  const ext=file.name.split('.').pop()||'jpg';
-  const path=`${currentUser.id}/${Date.now()}.${ext}`;
+  const ext=file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'jpg')||'jpg';
+  /* ユーザーID / タイムスタンプ_ランダム32文字.拡張子 */
+  const path=`${currentUser.id}/${Date.now()}_${randomHex()}.${ext}`;
   const res=await fetch(`${SB_URL}/storage/v1/object/tebiki-images/${path}`,{
     method:'POST',
     headers:{
@@ -798,7 +805,6 @@ async function uploadImageToStorage(file){
     body:file
   });
   if(!res.ok){const e=await res.text();throw new Error('画像アップロード失敗: '+e)}
-  /* 公開URLを返す */
   return `${SB_URL}/storage/v1/object/public/tebiki-images/${path}`;
 }
 
