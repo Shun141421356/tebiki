@@ -486,7 +486,7 @@ async function loadManuals(){
   const msg=document.getElementById('sync-msg');
   msg.textContent='同期中...';
   try{
-    const rows=await sb('GET','manuals',null,`?user_id=eq.${currentUser.id}&order=updated_at.desc&select=*`);
+    const rows=await sb('POST','rpc/get_manuals',{p_user_id:currentUser.id});
     manuals=(rows||[]).map(r=>({
       id:r.id,
       title:r.title||'',
@@ -511,17 +511,17 @@ class ConflictError extends Error{
 
 async function upsertManual(m,force=false){
   if(!force && curBaseUpdatedAt){
-    const rows=await sb('GET','manuals',null,`?id=eq.${m.id}&select=updated_at`);
+    const rows=await sb('POST','rpc/get_manual_updated_at',{p_id:m.id,p_user_id:currentUser.id});
     if(rows&&rows.length){
       const dbTs=new Date(rows[0].updated_at).getTime();
       if(dbTs>curBaseUpdatedAt) throw new ConflictError(dbTs);
     }
   }
-  await sb('POST','manuals',{
-    id:m.id,user_id:currentUser.id,
-    title:m.title,tags:m.tags,blocks:m.blocks,
-    updated_at:new Date(m.updatedAt).toISOString()
-  },'?on_conflict=id');
+  await sb('POST','rpc/upsert_manual',{
+    p_id:m.id,p_user_id:currentUser.id,
+    p_title:m.title,p_tags:m.tags,p_blocks:m.blocks,
+    p_updated_at:new Date(m.updatedAt).toISOString()
+  });
   curBaseUpdatedAt=m.updatedAt;
 }
 
@@ -551,7 +551,7 @@ async function handleConflict(m,dbTs){
 }
 
 async function deleteManual(id){
-  await sb('DELETE','manuals',null,`?id=eq.${id}&user_id=eq.${currentUser.id}`);
+  await sb('POST','rpc/delete_manual',{p_id:id,p_user_id:currentUser.id});
 }
 
 /* ═══ HOME ═══ */
