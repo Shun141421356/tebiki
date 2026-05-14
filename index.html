@@ -166,12 +166,28 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
 
 /* ── ADMIN ── */
 .admin-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.admin-tabs{display:flex;border-bottom:1px solid var(--paper3);flex-shrink:0}
+.admin-tab{flex:1;padding:10px;text-align:center;font-size:13px;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Zen Kaku Gothic New',sans-serif}
+.admin-tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
 .admin-user-card{background:var(--paper);border:1px solid var(--paper3);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
 .admin-user-card .uname{flex:1;font-size:14px;font-weight:500;color:var(--ink)}
 .admin-user-card .urole{font-size:11px;color:var(--ink3);background:var(--paper2);padding:2px 8px;border-radius:20px}
 .admin-del-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--paper3);background:transparent;font-size:12px;color:var(--ink3);cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif}
 .admin-del-btn:hover{border-color:var(--coral);color:var(--danger);background:var(--coral-light)}
 .admin-del-btn:disabled{opacity:.4;cursor:default}
+/* ログ */
+.log-card{background:var(--paper);border:1px solid var(--paper3);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.log-action{font-size:12px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:6px}
+.log-action .badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:400}
+.badge-login{background:var(--accent-light);color:var(--accent)}
+.badge-logout{background:var(--paper3);color:var(--ink3)}
+.badge-create{background:#E8F5E9;color:#2E7D32}
+.badge-edit{background:#FFF8E1;color:#F57F17}
+.badge-delete{background:var(--coral-light);color:var(--danger)}
+.badge-error{background:#FCE4EC;color:#C62828}
+.badge-conflict{background:#EDE7F6;color:#4527A0}
+.log-meta{font-size:11px;color:var(--ink3);display:flex;gap:8px}
+.log-detail{font-size:11px;color:var(--ink2);background:var(--paper2);border-radius:6px;padding:4px 8px;word-break:break-all}
 
 /* ── MODAL ── */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:flex;align-items:flex-end;justify-content:center}
@@ -307,7 +323,11 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
   <div class="screen" id="sc-admin">
     <div style="display:flex;align-items:center;gap:9px;padding:12px 15px;border-bottom:1px solid var(--paper3);background:var(--paper);flex-shrink:0">
       <button class="icon-btn" id="admin-back"><svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg></button>
-      <span style="font-size:15px;font-weight:500;flex:1">ユーザー管理</span>
+      <span style="font-size:15px;font-weight:500;flex:1">管理</span>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab on" id="admin-tab-users" onclick="switchAdminTab('users')">ユーザー管理</button>
+      <button class="admin-tab" id="admin-tab-logs" onclick="switchAdminTab('logs')">ログ</button>
     </div>
     <div class="admin-scroll" id="admin-scroll">
       <div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">読み込み中...</div>
@@ -430,6 +450,19 @@ document.getElementById('reg-btn').onclick=async()=>{
   document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-btn').click()});
 });
 
+/* ═══ LOGGING ═══ */
+async function writeLog(action, detail={}){
+  if(!currentUser)return;
+  try{
+    await sb('POST','rpc/write_log',{
+      p_user_id:currentUser.id,
+      p_username:currentUser.username,
+      p_action:action,
+      p_detail:detail
+    });
+  }catch(e){console.warn('log error',e)}
+}
+
 function onLogin(user){
   currentUser=user;
   saveSession(user);
@@ -439,12 +472,14 @@ function onLogin(user){
   if(user.role==='admin'){
     document.getElementById('nav-admin').style.display='flex';
   }
+  writeLog('login');
   goTo('home');
   loadManuals();
 }
 
-document.getElementById('logout-btn').onclick=()=>{
+document.getElementById('logout-btn').onclick=async()=>{
   if(!confirm('ログアウトしますか？'))return;
+  await writeLog('logout');
   currentUser=null;clearSession();
   document.getElementById('user-chip').style.display='none';
   document.getElementById('bnav').style.display='none';
@@ -463,7 +498,7 @@ function goTo(name){
     if(currentUser) loadManuals().catch(e=>console.error(e));
   }
   if(name==='export')initExport();
-  if(name==='admin')loadAdminUsers();
+  if(name==='admin'){adminTab='users';document.getElementById('admin-tab-users').classList.add('on');document.getElementById('admin-tab-logs').classList.remove('on');loadAdminUsers()}
 }
 async function goHome(){
   /* 保存は試みるが3秒でタイムアウト、失敗してもホームに戻る */
@@ -551,7 +586,9 @@ async function handleConflict(m,dbTs){
 }
 
 async function deleteManual(id){
+  const m=getM(id);
   await sb('POST','rpc/delete_manual',{p_id:id,p_user_id:currentUser.id});
+  await writeLog('delete',{manual_id:id,title:m?m.title:''});
 }
 
 /* ═══ HOME ═══ */
@@ -604,13 +641,15 @@ async function autoSave(){
   m.blocks=collectBlocks();
   m.updatedAt=Date.now();
   try{
+    const isNew=!m._loggedTitle||m._loggedTitle!==m.title;
     await upsertManual(m);
+    if(isNew){m._loggedTitle=m.title;await writeLog('edit',{manual_id:m.id,title:m.title})}
     const t=document.getElementById('toast');
     t.textContent='保存しました';t.style.color='';
     flashToast();
   }catch(e){
     if(e instanceof ConflictError){
-      /* 競合 → ユーザーに選ばせる */
+      await writeLog('conflict',{manual_id:m.id,title:m.title,db_ts:new Date(e.dbTs).toISOString()});
       await handleConflict(m,e.dbTs);
     }else{
       console.error('autoSave error',e);
@@ -632,6 +671,7 @@ async function newManual(){
   curBaseUpdatedAt=null; /* 新規作成は競合チェック不要 */
   try{await upsertManual(m,true)}catch(e){alert('作成エラー: '+e.message);return}
   curBaseUpdatedAt=now;
+  await writeLog('create',{manual_id:id});
   openManual(id);
 }
 
@@ -887,6 +927,15 @@ function endDrag(){
 }
 
 /* ═══ ADMIN ═══ */
+let adminTab='users';
+function switchAdminTab(tab){
+  adminTab=tab;
+  document.getElementById('admin-tab-users').classList.toggle('on',tab==='users');
+  document.getElementById('admin-tab-logs').classList.toggle('on',tab==='logs');
+  if(tab==='users')loadAdminUsers();
+  else loadAdminLogs();
+}
+
 async function loadAdminUsers(){
   const scroll=document.getElementById('admin-scroll');
   scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">読み込み中...</div>`;
@@ -914,6 +963,46 @@ async function loadAdminUsers(){
           card.remove();
         }catch(e2){alert('削除エラー: '+e2.message)}
       };
+      scroll.appendChild(card);
+    });
+  }catch(e){
+    scroll.innerHTML=`<div style="color:var(--danger);font-size:13px;padding:20px">${esc(e.message)}</div>`;
+  }
+}
+
+async function loadAdminLogs(){
+  const scroll=document.getElementById('admin-scroll');
+  scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">読み込み中...</div>`;
+  try{
+    const rows=await sb('POST','rpc/get_logs',{p_limit:200});
+    scroll.innerHTML='';
+    if(!rows||!rows.length){
+      scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">ログがありません</div>`;
+      return;
+    }
+    const actionLabel={
+      login:{label:'ログイン',badge:'badge-login'},
+      logout:{label:'ログアウト',badge:'badge-logout'},
+      create:{label:'作成',badge:'badge-create'},
+      edit:{label:'編集',badge:'badge-edit'},
+      delete:{label:'削除',badge:'badge-delete'},
+      conflict:{label:'競合',badge:'badge-conflict'},
+    };
+    rows.forEach(r=>{
+      const info=actionLabel[r.action]||{label:r.action,badge:'badge-login'};
+      const d=new Date(r.created_at);
+      const time=d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const detail=r.detail&&Object.keys(r.detail).length?JSON.stringify(r.detail):'';
+      const card=document.createElement('div');card.className='log-card';
+      card.innerHTML=`
+        <div class="log-action">
+          <span class="badge ${info.badge}">${esc(info.label)}</span>
+          <span>${esc(r.username||'?')}</span>
+        </div>
+        <div class="log-meta">
+          <span>${time}</span>
+        </div>
+        ${detail?`<div class="log-detail">${esc(detail)}</div>`:''}`;
       scroll.appendChild(card);
     });
   }catch(e){
