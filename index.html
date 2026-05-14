@@ -413,7 +413,8 @@ document.getElementById('reg-btn').onclick=async()=>{
   btn.disabled=true;btn.textContent='登録中...';
   try{
     const hash=await sha256(pass);
-    await sb('POST','users',{username,password_hash:hash,role:'user'});
+    const rows=await sb('POST','rpc/register_user',{p_username:username,p_password_hash:hash});
+    if(!rows||!rows.length)throw new Error('登録に失敗しました');
     ok.textContent='登録しました！ログインしてください';
     switchTab('login');
     document.getElementById('login-user').value=username;
@@ -890,28 +891,34 @@ async function loadAdminUsers(){
   const scroll=document.getElementById('admin-scroll');
   scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">読み込み中...</div>`;
   try{
-    const rows=await sb('GET','users',null,'?select=id,username,role,created_at&order=created_at.asc');
+    /* RPC経由でユーザー一覧を取得（SECURITY DEFINERでRLSをバイパス） */
+    const rows=await sb('POST','rpc/get_all_users',{});
     scroll.innerHTML='';
-    if(!rows||!rows.length){scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">ユーザーがいません</div>`;return}
+    if(!rows||!rows.length){
+      scroll.innerHTML=`<div style="color:var(--ink3);font-size:13px;text-align:center;padding:20px">ユーザーがいません</div>`;
+      return;
+    }
     rows.forEach(u=>{
       const card=document.createElement('div');card.className='admin-user-card';
       const isSelf=u.id===currentUser.id;
       card.innerHTML=`
         <div class="uname">${esc(u.username)}</div>
-        <span class="urole">${u.role}</span>
+        <span class="urole">${esc(u.role)}</span>
         <button class="admin-del-btn" ${isSelf?'disabled title="自分自身は削除できません"':''}>削除</button>`;
       card.querySelector('.admin-del-btn').onclick=async()=>{
         if(isSelf)return;
         if(!confirm(`"${u.username}" を削除しますか？てびきデータもすべて削除されます。`))return;
         try{
-          await sb('DELETE','manuals',null,`?user_id=eq.${u.id}`);
-          await sb('DELETE','users',null,`?id=eq.${u.id}`);
+          /* RPC経由で削除（SECURITY DEFINERでmanualsとusersを両方削除） */
+          await sb('POST','rpc/delete_user',{p_user_id:u.id});
           card.remove();
         }catch(e2){alert('削除エラー: '+e2.message)}
       };
       scroll.appendChild(card);
     });
-  }catch(e){scroll.innerHTML=`<div style="color:var(--danger);font-size:13px;padding:20px">${esc(e.message)}</div>`}
+  }catch(e){
+    scroll.innerHTML=`<div style="color:var(--danger);font-size:13px;padding:20px">${esc(e.message)}</div>`;
+  }
 }
 
 /* ═══ COVER / PDF ═══ */
