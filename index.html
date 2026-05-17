@@ -904,10 +904,8 @@ function mkImgWrap(url,scale=1,annotations=[],flipH=false,flipV=false){
   /* 編集ボタン */
   const editBtn=document.createElement('button');editBtn.className='blk-img-edit';editBtn.textContent='✏️ 編集';
   editBtn.onclick=()=>{
-    openAnnotationEditor(url, iw._annotations, iw._flipH, iw._flipV, iw, (compositeDataUrl, newAnnotations, newFlipH, newFlipV)=>{
-      /* 合成済み画像を表示（Storage URLはそのまま、アノテーションデータを更新） */
+    openAnnotationEditor(url, iw._annotations, false, false, iw, (compositeDataUrl, newAnnotations)=>{
       iw._annotations=newAnnotations;
-      iw._flipH=newFlipH;iw._flipV=newFlipV;
       /* 表示用画像を合成済みに更新 */
       img.src=compositeDataUrl;
       iw.dataset.composite=compositeDataUrl; /* PDF用に合成済みdataURLを保持 */
@@ -1544,8 +1542,7 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
   annState.objects=existingAnnotations?JSON.parse(JSON.stringify(existingAnnotations)):[];
   annState.history=[];
   annState.selected=-1;
-  annState.flipH=flipH||false;
-  annState.flipV=flipV||false;
+  /* flipH/flipVは図形座標で管理するため不要 */
   annState.onDone=onDone;
   annState.iwRef=iwRef;
   annState.tool='arrow';
@@ -1585,11 +1582,7 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
 }
 
 function annSaveHistory(){
-  annState.history.push(JSON.stringify({
-    objects:annState.objects,
-    flipH:annState.flipH,
-    flipV:annState.flipV
-  }));
+  annState.history.push(JSON.stringify({objects:annState.objects}));
   if(annState.history.length>50)annState.history.shift();
 }
 
@@ -1598,12 +1591,8 @@ function annDraw(){
   const {baseImg,objects,selected,flipH,flipV}=annState;
   const W=ac.width,H=ac.height;
   annCtx.clearRect(0,0,W,H);
-  annCtx.save();
-  /* 反転 */
-  annCtx.translate(flipH?W:0,flipV?H:0);
-  annCtx.scale(flipH?-1:1,flipV?-1:1);
+  /* 写真はそのまま描画（反転は図形オブジェクトの座標で対応） */
   annCtx.drawImage(baseImg,0,0,W,H);
-  annCtx.restore();
   /* オブジェクト描画 */
   objects.forEach((obj,i)=>{
     const isSel=i===selected;
@@ -1715,7 +1704,7 @@ function initAnnEvents(){
   document.getElementById('ann-undo').onclick=()=>{
     if(!annState.history.length)return;
     const prev=JSON.parse(annState.history.pop());
-    annState.objects=prev.objects;annState.flipH=prev.flipH;annState.flipV=prev.flipV;
+    annState.objects=prev.objects;
     annState.selected=-1;annDraw();
   };
 
@@ -1725,9 +1714,25 @@ function initAnnEvents(){
     annSaveHistory();annState.objects.splice(annState.selected,1);annState.selected=-1;annDraw();
   };
 
-  /* 反転 */
-  document.getElementById('ann-flip-h').onclick=()=>{annSaveHistory();annState.flipH=!annState.flipH;annDraw()};
-  document.getElementById('ann-flip-v').onclick=()=>{annSaveHistory();annState.flipV=!annState.flipV;annDraw()};
+  /* 反転（選択中オブジェクトの座標を反転） */
+  document.getElementById('ann-flip-h').onclick=()=>{
+    if(annState.selected<0){alert('反転する図形を選択してください');return}
+    annSaveHistory();
+    const obj=annState.objects[annState.selected];
+    const W=getAnnCanvas().width;
+    /* x座標をCanvas幅で反転 */
+    obj.x1=W-obj.x1;obj.x2=W-obj.x2;
+    annDraw();
+  };
+  document.getElementById('ann-flip-v').onclick=()=>{
+    if(annState.selected<0){alert('反転する図形を選択してください');return}
+    annSaveHistory();
+    const obj=annState.objects[annState.selected];
+    const H=getAnnCanvas().height;
+    /* y座標をCanvas高さで反転 */
+    obj.y1=H-obj.y1;obj.y2=H-obj.y2;
+    annDraw();
+  };
 
   /* キャンセル */
   /* 完了 */
@@ -1735,11 +1740,7 @@ function initAnnEvents(){
     const ac2=getAnnCanvas();const W=ac2.width,H=ac2.height;
     const out=document.createElement('canvas');out.width=W;out.height=H;
     const octx=out.getContext('2d');
-    octx.save();
-    octx.translate(annState.flipH?W:0,annState.flipV?H:0);
-    octx.scale(annState.flipH?-1:1,annState.flipV?-1:1);
     octx.drawImage(annState.baseImg,0,0,W,H);
-    octx.restore();
     annState.objects.forEach(obj=>{
       octx.save();
       octx.strokeStyle=obj.color;octx.fillStyle=obj.color;
@@ -1754,7 +1755,7 @@ function initAnnEvents(){
     });
     const compositeDataUrl=out.toDataURL('image/jpeg',.92);
     document.getElementById('ann-screen').classList.remove('open');
-    if(annState.onDone)annState.onDone(compositeDataUrl,annState.objects,annState.flipH,annState.flipV);
+    if(annState.onDone)annState.onDone(compositeDataUrl,annState.objects);
   };
 }
 
