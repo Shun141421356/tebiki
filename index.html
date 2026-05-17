@@ -1488,10 +1488,57 @@ let annState={
   iwRef:null,         /* 呼び出し元のimgWrap要素 */
 };
 
-const annCanvas=document.getElementById('ann-canvas');
-const annCtx=annCanvas.getContext('2d');
+/* annCanvas/annCtx は初回使用時に取得（HTML挿入後のため） */
+let annCanvas=null,annCtx=null,annEventsInit=false;
+function getAnnCanvas(){
+  if(!annCanvas){
+    annCanvas=document.getElementById('ann-canvas');
+    annCtx=annCanvas.getContext('2d');
+  }
+  if(!annEventsInit){
+    annEventsInit=true;
+    annCanvas.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      annCanvas.setPointerCapture(e.pointerId);
+      const {x,y}=canvasPos(e);
+      let hit=-1;
+      for(let i=annState.objects.length-1;i>=0;i--){
+        if(hitTest(annState.objects[i],x,y)){hit=i;break}
+      }
+      if(hit>=0){annState.selected=hit;annDraw();return}
+      annState.selected=-1;
+      annState.drawing=true;
+      annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
+    });
+    annCanvas.addEventListener('pointermove',e=>{
+      if(!annState.drawing)return;
+      e.preventDefault();
+      const {x,y}=canvasPos(e);
+      annState.curX=x;annState.curY=y;annDraw();
+    });
+    annCanvas.addEventListener('pointerup',e=>{
+      if(!annState.drawing)return;
+      annState.drawing=false;
+      const {x,y}=canvasPos(e);
+      const dx=x-annState.startX,dy=y-annState.startY;
+      if(Math.sqrt(dx*dx+dy*dy)<4)return;
+      annSaveHistory();
+      annState.objects.push({
+        type:annState.tool,
+        x1:annState.startX,y1:annState.startY,
+        x2:x,y2:y,
+        color:annState.color,
+        size:annState.size
+      });
+      annState.selected=annState.objects.length-1;
+      annDraw();
+    });
+  }
+  return annCanvas;
+}
 
 async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRef, onDone){
+  console.log('[ANN] openAnnotationEditor called', url);
   annState.baseUrl=url;
   annState.objects=existingAnnotations?JSON.parse(JSON.stringify(existingAnnotations)):[];
   annState.history=[];
@@ -1504,12 +1551,15 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
 
   /* 先に画面を開く */
   document.getElementById('ann-screen').classList.add('open');
+  console.log('[ANN] screen opened');
 
   /* ツールボタンをリセット（ann-screen内のみ） */
   document.querySelectorAll('#ann-screen [data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool==='arrow'));
 
   /* loadImg でBlobURLに変換（CORS対策） */
+  console.log('[ANN] loading image...');
   const img=await loadImg(url);
+  console.log('[ANN] loadImg result:', img);
   if(!img){
     alert('画像を読み込めませんでした');
     document.getElementById('ann-screen').classList.remove('open');
@@ -1518,16 +1568,19 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
   annState.baseImg=img;
 
   /* Canvasサイズを画面に合わせてフィット */
+  const ac=getAnnCanvas();
   const wrap=document.getElementById('ann-canvas-wrap');
   const maxW=wrap.clientWidth||window.innerWidth;
   const maxH=wrap.clientHeight||(window.innerHeight-200);
+  console.log('[ANN] wrap size:', maxW, maxH, 'img size:', img.width, img.height);
   const sc=Math.min(maxW/img.width, maxH/img.height, 1);
-  annCanvas.width=img.width;
-  annCanvas.height=img.height;
-  annCanvas.style.width=Math.round(img.width*sc)+'px';
-  annCanvas.style.height=Math.round(img.height*sc)+'px';
+  ac.width=img.width;
+  ac.height=img.height;
+  ac.style.width=Math.round(img.width*sc)+'px';
+  ac.style.height=Math.round(img.height*sc)+'px';
   annState.canvasScale=sc;
   annDraw();
+  console.log('[ANN] draw complete');
 }
 
 function annSaveHistory(){
@@ -1540,8 +1593,9 @@ function annSaveHistory(){
 }
 
 function annDraw(){
+  const ac=getAnnCanvas();if(!ac||!annCtx)return;
   const {baseImg,objects,selected,flipH,flipV}=annState;
-  const W=annCanvas.width,H=annCanvas.height;
+  const W=ac.width,H=ac.height;
   annCtx.clearRect(0,0,W,H);
   annCtx.save();
   /* 反転 */
@@ -1611,7 +1665,7 @@ function drawArrow(ctx,x1,y1,x2,y2,size){
 }
 
 function canvasPos(e){
-  const rect=annCanvas.getBoundingClientRect();
+  const rect=getAnnCanvas().getBoundingClientRect();
   const sc=annState.canvasScale;
   const px=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
   const py=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
@@ -1624,45 +1678,6 @@ function hitTest(obj,x,y){
   const x2=Math.max(obj.x1,obj.x2)+margin,y2=Math.max(obj.y1,obj.y2)+margin;
   return x>=x1&&x<=x2&&y>=y1&&y<=y2;
 }
-
-annCanvas.addEventListener('pointerdown',e=>{
-  e.preventDefault();
-  annCanvas.setPointerCapture(e.pointerId);
-  const {x,y}=canvasPos(e);
-  /* 既存オブジェクトへのヒットテスト（選択） */
-  let hit=-1;
-  for(let i=annState.objects.length-1;i>=0;i--){
-    if(hitTest(annState.objects[i],x,y)){hit=i;break}
-  }
-  if(hit>=0){annState.selected=hit;annDraw();return}
-  /* 新規描画開始 */
-  annState.selected=-1;
-  annState.drawing=true;
-  annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
-});
-annCanvas.addEventListener('pointermove',e=>{
-  if(!annState.drawing)return;
-  e.preventDefault();
-  const {x,y}=canvasPos(e);
-  annState.curX=x;annState.curY=y;annDraw();
-});
-annCanvas.addEventListener('pointerup',e=>{
-  if(!annState.drawing)return;
-  annState.drawing=false;
-  const {x,y}=canvasPos(e);
-  const dx=x-annState.startX,dy=y-annState.startY;
-  if(Math.sqrt(dx*dx+dy*dy)<4)return;
-  annSaveHistory();
-  annState.objects.push({
-    type:annState.tool,
-    x1:annState.startX,y1:annState.startY,
-    x2:x,y2:y,
-    color:annState.color,
-    size:annState.size
-  });
-  annState.selected=annState.objects.length-1;
-  annDraw();
-});
 
 /* ツール選択 */
 document.querySelectorAll('#ann-screen [data-tool]').forEach(btn=>{
@@ -1730,7 +1745,7 @@ document.getElementById('ann-cancel').onclick=()=>{
 /* 完了: Canvasを合成してdataURLとannotationsを返す */
 document.getElementById('ann-done').onclick=()=>{
   /* 最終合成: 反転＋アノテーション済みCanvasをdataURLに */
-  const W=annCanvas.width,H=annCanvas.height;
+  const ac2=getAnnCanvas();const W=ac2.width,H=ac2.height;
   const out=document.createElement('canvas');out.width=W;out.height=H;
   const octx=out.getContext('2d');
   /* 反転描画 */
