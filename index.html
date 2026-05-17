@@ -690,7 +690,8 @@ async function newManual(){
 
 function openManual(id){
   curId=id;const m=getM(id);
-  curBaseUpdatedAt=m.updatedAt; /* 楽観的ロック: 編集開始時点を記録 */
+  curBaseUpdatedAt=m.updatedAt;
+  undoStack=[];redoStack=[]; /* 開くたびにスタックをリセット */
   document.getElementById('ed-title').value=m.title||'';
   document.querySelectorAll('.tag').forEach(t=>t.classList.toggle('on',(m.tags||[]).includes(t.dataset.v)));
   renderBlocks(m.blocks||[]);goTo('editor');
@@ -721,6 +722,57 @@ function updateUrlPreview(bcont,text){
 
 /* ═══ BLOCKS ═══ */
 let stepCnt=0;
+/* ═══ UNDO / REDO ═══ */
+const UNDO_MAX=50;
+let undoStack=[]; /* スナップショットスタック */
+let redoStack=[];
+let _undoLock=false; /* undo/redo実行中は新しいスナップショットを取らない */
+
+/* 現在のブロック状態をスナップショットとして保存 */
+function pushSnapshot(){
+  if(_undoLock)return;
+  const snap=collectBlocks();
+  undoStack.push(JSON.stringify(snap));
+  if(undoStack.length>UNDO_MAX)undoStack.shift();
+  redoStack=[]; /* 新操作でredoスタックをクリア */
+}
+
+function applySnapshot(snap){
+  _undoLock=true;
+  renderBlocks(JSON.parse(snap));
+  schedSave();
+  _undoLock=false;
+}
+
+function undoBlocks(){
+  if(undoStack.length===0)return;
+  const current=JSON.stringify(collectBlocks());
+  redoStack.push(current);
+  const prev=undoStack.pop();
+  applySnapshot(prev);
+}
+
+function redoBlocks(){
+  if(redoStack.length===0)return;
+  const current=JSON.stringify(collectBlocks());
+  undoStack.push(current);
+  const next=redoStack.pop();
+  applySnapshot(next);
+}
+
+/* キーボードショートカット */
+document.addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey;
+  if(!mod)return;
+  /* 編集画面が開いているときのみ有効 */
+  if(!document.getElementById('sc-editor').classList.contains('active'))return;
+  if(e.key==='z'||e.key==='Z'){
+    if(e.shiftKey){e.preventDefault();redoBlocks()}
+    else{e.preventDefault();undoBlocks()}
+  }
+  if(e.key==='y'||e.key==='Y'){e.preventDefault();redoBlocks()}
+});
+
 function renderBlocks(blocks){
   const area=document.getElementById('blocks');area.innerHTML='';stepCnt=0;
   blocks.forEach(b=>area.appendChild(mkBlk(b)));
@@ -728,6 +780,7 @@ function renderBlocks(blocks){
   setTimeout(()=>area.querySelectorAll('textarea').forEach(el=>ar(el)),50);
 }
 function addBlock(type){
+  pushSnapshot(); /* 追加前にスナップショット */
   const id='b'+Date.now();
   const el=mkBlk({id,type,val:'',imgs:[],refs:[]});
   document.getElementById('blocks').appendChild(el);
@@ -796,7 +849,7 @@ function mkBlk(b){
         updateUrlPreview(d.querySelector('.bcont'),inp.value);
     }
   }
-  d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
+  d.querySelector('.bdel').onclick=()=>{pushSnapshot();d.remove();renum();schedSave()};
   return d;
 }
 
@@ -986,7 +1039,10 @@ function onDrag(e){
 function endDrag(){
   if(!dnd)return;const{blk,tgt,pos}=dnd;blk.classList.remove('dragging');
   document.querySelectorAll('.blk').forEach(s=>s.classList.remove('dot-top','dot-bot'));
-  if(tgt&&tgt!==blk){const area=document.getElementById('blocks');if(pos==='before')area.insertBefore(blk,tgt);else tgt.after(blk)}
+  if(tgt&&tgt!==blk){
+    pushSnapshot(); /* 並び替え前にスナップショット */
+    const area=document.getElementById('blocks');if(pos==='before')area.insertBefore(blk,tgt);else tgt.after(blk);
+  }
   renum();
   document.querySelectorAll('#blocks .blk').forEach(blkEl=>{
     blkEl.querySelectorAll('.ref-badge').forEach(badge=>{
