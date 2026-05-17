@@ -800,7 +800,7 @@ function mkBlk(b){
 }
 
 /* 画像ラッパー要素を生成（scale: 1/1.5/1.75/2） */
-const SCALES=[{v:1,label:'×1'},{v:1.5,label:'×1.5'},{v:1.75,label:'×1.75'},{v:2,label:'×2'}];
+const SCALES=[{v:1,label:'×1'},{v:1.25,label:'×1.25'},{v:1.5,label:'×1.5'},{v:1.75,label:'×1.75'},{v:2,label:'×2'},{v:2.15,label:'×2.15'},{v:2.5,label:'×2.5'},{v:2.75,label:'×2.75'}];
 function mkImgWrap(url,scale=1){
   const iw=document.createElement('div');
   iw.className='blk-img-wrap';iw.dataset.scale=scale;iw.dataset.url=url;
@@ -810,7 +810,8 @@ function mkImgWrap(url,scale=1){
   /* スケールに応じたmax-width（親幅の何%か） */
   function applyScale(s){
     iw.dataset.scale=s;
-    const pct=Math.min(s*50,100); /* ×1=50%, ×1.5=75%, ×1.75=87.5%, ×2=100% */
+    /* ×1を基準（コンテナ幅の36%）として線形にスケール、100%を上限 */
+    const pct=Math.min(Math.round(s/2.75*100),100);
     img.style.width=pct+'%';img.style.maxWidth='100%';img.style.height='auto';
     bar.querySelectorAll('.img-scale-btn').forEach(btn=>{
       btn.classList.toggle('on',Number(btn.dataset.sv)===s);
@@ -1207,7 +1208,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       let blockH=Math.max(84,nLines*84)+28;
       const imgs_s=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_s.length&&b.img)imgs_s.push({url:b.img,scale:1});
-      for(const it of imgs_s){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const maxW=Math.min(img.width,(CW-104)*sc);const iw=Math.min(img.width,maxW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
+      for(const it of imgs_s){const img=await loadImg(it.url);if(img){const baseW=(CW-104);const sc=it.scale||1;const drawW=Math.min(baseW*sc,CW-104);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX+104,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='text'){
@@ -1216,7 +1217,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       let blockH=nLines*80+28;
       const imgs_t=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_t.length&&b.img)imgs_t.push({url:b.img,scale:1});
-      for(const it of imgs_t){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const maxW=Math.min(img.width,CW*sc);const iw=Math.min(img.width,maxW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
+      for(const it of imgs_t){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min(CW/2*sc,CW);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='note'){
@@ -1224,12 +1225,12 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       const imgs_n=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_n.length&&b.img)imgs_n.push({url:b.img,scale:1});
       const wrapped=wrapText(ctx,b.val||'',CW-56);let bh=Math.max(120,wrapped.length*76)+48;
-      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const iw=Math.min(img.width,(CW-56)*sc);bh+=img.height*(iw/img.width)+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);const iw=Math.min(img.width,drawW);bh+=img.height*(iw/img.width)+20}}
       ctx.fillStyle=hexAlpha(pal.deco,.15);roundRect(ctx,MX,y,CW,bh,12);ctx.fill();
       ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,12,bh);
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';wrapped.forEach((line,i)=>ctx.fillText(line,MX+40,y+28+i*72));
       let noteY=y+28+wrapped.length*72+20;
-      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const iw=Math.min(img.width,(CW-56)*sc),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
       y+=bh+28;
     }
   }
@@ -1262,7 +1263,7 @@ async function paginateBlocks(blocks){
     const imgItems=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
     if(!imgItems.length&&b.img)imgItems.push({url:b.img,scale:1});
     let imgH=0;
-    for(const it of imgItems){imgH+=await measureImgH(it.url,textMaxW*Math.min(it.scale||1,2))}
+    for(const it of imgItems){imgH+=await measureImgH(it.url,textMaxW/2*(it.scale||1))}
     const refH=(b.refs&&b.refs.length)?60:0;
     if(b.type==='h2') return 140;
     if(b.type==='h3') return 100;
