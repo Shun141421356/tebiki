@@ -119,9 +119,12 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
 .snum:hover{transform:scale(1.15)}
 .blk-note .bcont{background:var(--warm-light);border-left:3px solid var(--warm);padding:9px 12px}
 .blk-note .bcont textarea{font-size:13px;color:var(--ink2)}
-.blk-img-wrap{margin-top:6px;position:relative;display:inline-block}
-.blk-img-wrap img{max-width:100%;max-height:200px;border-radius:8px;display:block;object-fit:contain}
+.blk-img-wrap{margin-top:6px;position:relative;display:block}
+.blk-img-wrap img{border-radius:8px;display:block;object-fit:contain;max-width:100%}
 .blk-img-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1}
+.img-scale-bar{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.img-scale-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--paper3);background:var(--paper2);font-size:10px;color:var(--ink2);cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif}
+.img-scale-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .blk-img-add{margin-top:6px;padding:4px 10px;border-radius:8px;border:1px dashed var(--paper3);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:inline-flex;align-items:center;gap:4px}
 .blk-img-add:hover{border-color:var(--accent2);color:var(--accent)}
 .url-preview{margin-top:4px;display:flex;flex-direction:column;gap:3px}
@@ -632,7 +635,12 @@ function schedSave(){clearTimeout(saveTimer);saveTimer=setTimeout(autoSave,800)}
 function collectBlocks(){
   return[...document.querySelectorAll('#blocks .blk')].map(el=>{
     const inp=el.querySelector('input,textarea');
-    const imgs=[...el.querySelectorAll('.blk-img-wrap img')].map(i=>i.src).filter(Boolean);
+    /* imgs: [{url, scale}] の配列で保存 */
+    const imgs=[...el.querySelectorAll('.blk-img-wrap')].map(iw=>{
+      const img=iw.querySelector('img');
+      if(!img||!img.src)return null;
+      return{url:img.src,scale:Number(iw.dataset.scale||1)};
+    }).filter(Boolean);
     const refs=[...el.querySelectorAll('.ref-badge')].map(r=>r.dataset.refId);
     return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:'',imgs,refs};
   });
@@ -757,9 +765,10 @@ function mkBlk(b){
 
   const extras=d.querySelector('.step-extras')||d.querySelector('.bcont');
 
-  /* ④ 既存画像を複数表示（imgs配列、後方互換でimgも対応） */
-  const imgList=b.imgs||(b.img?[b.img]:[]);
-  imgList.forEach(url=>{if(url)extras.appendChild(mkImgWrap(url))});
+  /* ④ 既存画像を複数表示（{url,scale}形式、後方互換で文字列URLも対応） */
+  const imgList=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
+  if(!imgList.length&&b.img)imgList.push({url:b.img,scale:1});
+  imgList.forEach(item=>{if(item.url)extras.appendChild(mkImgWrap(item.url,item.scale||1))});
 
   const addImgBtn=document.createElement('button');
   addImgBtn.className='blk-img-add';addImgBtn.innerHTML='📷 写真を追加';
@@ -790,16 +799,39 @@ function mkBlk(b){
   return d;
 }
 
-/* 画像ラッパー要素を生成 */
-function mkImgWrap(url){
-  const iw=document.createElement('div');iw.className='blk-img-wrap';
-  const img=document.createElement('img');img.src=url;
+/* 画像ラッパー要素を生成（scale: 1/1.5/1.75/2） */
+const SCALES=[{v:1,label:'×1'},{v:1.5,label:'×1.5'},{v:1.75,label:'×1.75'},{v:2,label:'×2'}];
+function mkImgWrap(url,scale=1){
+  const iw=document.createElement('div');
+  iw.className='blk-img-wrap';iw.dataset.scale=scale;iw.dataset.url=url;
+
+  const img=document.createElement('img');
+  img.src=url;
+  /* スケールに応じたmax-width（親幅の何%か） */
+  function applyScale(s){
+    iw.dataset.scale=s;
+    const pct=Math.min(s*50,100); /* ×1=50%, ×1.5=75%, ×1.75=87.5%, ×2=100% */
+    img.style.width=pct+'%';img.style.maxWidth='100%';img.style.height='auto';
+    bar.querySelectorAll('.img-scale-btn').forEach(btn=>{
+      btn.classList.toggle('on',Number(btn.dataset.sv)===s);
+    });
+  }
+
   const delBtn=document.createElement('button');delBtn.className='blk-img-del';delBtn.textContent='×';
-  delBtn.onclick=async()=>{
-    await deleteImageFromStorage(url);
-    iw.remove();schedSave();
-  };
-  iw.appendChild(img);iw.appendChild(delBtn);
+  delBtn.onclick=async()=>{await deleteImageFromStorage(url);iw.remove();schedSave()};
+
+  /* スケールボタンバー */
+  const bar=document.createElement('div');bar.className='img-scale-bar';
+  SCALES.forEach(({v,label})=>{
+    const btn=document.createElement('button');
+    btn.className='img-scale-btn'+(v===scale?' on':'');
+    btn.textContent=label;btn.dataset.sv=v;
+    btn.onclick=()=>{applyScale(v);schedSave()};
+    bar.appendChild(btn);
+  });
+
+  iw.appendChild(img);iw.appendChild(delBtn);iw.appendChild(bar);
+  applyScale(scale); /* 初期スケール適用 */
   return iw;
 }
 
@@ -919,7 +951,7 @@ document.getElementById('blk-photo-input').onchange=async function(){
     const url=await uploadImageToStorage(f);
     const extras=blkPhotoTarget.querySelector('.step-extras')||blkPhotoTarget.querySelector('.bcont');
     /* 既存画像は消さず、追加ボタンの直前に挿入 */
-    extras.insertBefore(mkImgWrap(url),addBtn);
+    extras.insertBefore(mkImgWrap(url,1),addBtn);
     schedSave();
   }catch(e){
     alert(e.message);
@@ -1173,29 +1205,31 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       ctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;ctx.textBaseline='top';
       const nLines=drawTextWithUrls(b.val||'',MX+104,y,CW-104,60,84,pal.text,pal.accent);
       let blockH=Math.max(84,nLines*84)+28;
-      const imgs_s=b.imgs||(b.img?[b.img]:[]);
-      for(const src of imgs_s){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-104),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
+      const imgs_s=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
+      if(!imgs_s.length&&b.img)imgs_s.push({url:b.img,scale:1});
+      for(const it of imgs_s){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const maxW=Math.min(img.width,(CW-104)*sc);const iw=Math.min(img.width,maxW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX+104,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='text'){
       ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;ctx.textBaseline='top';
       const nLines=drawTextWithUrls(b.val||'',MX,y,CW,56,80,pal.text,pal.accent);
       let blockH=nLines*80+28;
-      const imgs_t=b.imgs||(b.img?[b.img]:[]);
-      for(const src of imgs_t){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
+      const imgs_t=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
+      if(!imgs_t.length&&b.img)imgs_t.push({url:b.img,scale:1});
+      for(const it of imgs_t){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const maxW=Math.min(img.width,CW*sc);const iw=Math.min(img.width,maxW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='note'){
       ctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
-      const imgs_n=b.imgs||(b.img?[b.img]:[]);
+      const imgs_n=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
+      if(!imgs_n.length&&b.img)imgs_n.push({url:b.img,scale:1});
       const wrapped=wrapText(ctx,b.val||'',CW-56);let bh=Math.max(120,wrapped.length*76)+48;
-      /* note の画像高さを事前に加算 */
-      for(const src of imgs_n){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-56);bh+=img.height*(iw/img.width)+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const iw=Math.min(img.width,(CW-56)*sc);bh+=img.height*(iw/img.width)+20}}
       ctx.fillStyle=hexAlpha(pal.deco,.15);roundRect(ctx,MX,y,CW,bh,12);ctx.fill();
       ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,12,bh);
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';wrapped.forEach((line,i)=>ctx.fillText(line,MX+40,y+28+i*72));
       let noteY=y+28+wrapped.length*72+20;
-      for(const src of imgs_n){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-56),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=Math.min(it.scale||1,2);const iw=Math.min(img.width,(CW-56)*sc),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
       y+=bh+28;
     }
   }
@@ -1225,9 +1259,10 @@ async function paginateBlocks(blocks){
     /* テキスト行数を大まかに推定（Canvasなしなので文字数ベース） */
     const charsPerLine = b.type==='step' ? 18 : b.type==='note' ? 22 : 24;
     const lineH = b.type==='step' ? 84 : b.type==='note' ? 76 : 80;
-    const imgUrls=b.imgs||(b.img?[b.img]:[]);
+    const imgItems=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
+    if(!imgItems.length&&b.img)imgItems.push({url:b.img,scale:1});
     let imgH=0;
-    for(const src of imgUrls){imgH+=await measureImgH(src,textMaxW)}
+    for(const it of imgItems){imgH+=await measureImgH(it.url,textMaxW*Math.min(it.scale||1,2))}
     const refH=(b.refs&&b.refs.length)?60:0;
     if(b.type==='h2') return 140;
     if(b.type==='h3') return 100;
