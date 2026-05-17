@@ -637,9 +637,10 @@ function collectBlocks(){
     const inp=el.querySelector('input,textarea');
     /* imgs: [{url, scale}] の配列で保存 */
     const imgs=[...el.querySelectorAll('.blk-img-wrap')].map(iw=>{
-      const img=iw.querySelector('img');
-      if(!img||!img.src)return null;
-      return{url:img.src,scale:Number(iw.dataset.scale||1)};
+      /* dataset.urlに元のStorageURLを保持（img.srcはBlobURLになるため使わない） */
+      const url=iw.dataset.url;
+      if(!url)return null;
+      return{url,scale:Number(iw.dataset.scale||1)};
     }).filter(Boolean);
     const refs=[...el.querySelectorAll('.ref-badge')].map(r=>r.dataset.refId);
     return{id:el.dataset.id,type:el.dataset.type,val:inp?inp.value:'',imgs,refs};
@@ -1208,7 +1209,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       let blockH=Math.max(84,nLines*84)+28;
       const imgs_s=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_s.length&&b.img)imgs_s.push({url:b.img,scale:1});
-      for(const it of imgs_s){const img=await loadImg(it.url);if(img){const baseW=(CW-104);const sc=it.scale||1;const drawW=Math.min(baseW*sc,CW-104);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
+      for(const it of imgs_s){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-104)/2*sc,CW-104);const drawH=img.height*(drawW/img.width);ctx.drawImage(img,MX+104,y+blockH,drawW,drawH);blockH+=drawH+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX+104,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='text'){
@@ -1217,7 +1218,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       let blockH=nLines*80+28;
       const imgs_t=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_t.length&&b.img)imgs_t.push({url:b.img,scale:1});
-      for(const it of imgs_t){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min(CW/2*sc,CW);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
+      for(const it of imgs_t){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min(CW/2*sc,CW);const drawH=img.height*(drawW/img.width);ctx.drawImage(img,MX,y+blockH,drawW,drawH);blockH+=drawH+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='note'){
@@ -1225,12 +1226,12 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       const imgs_n=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
       if(!imgs_n.length&&b.img)imgs_n.push({url:b.img,scale:1});
       const wrapped=wrapText(ctx,b.val||'',CW-56);let bh=Math.max(120,wrapped.length*76)+48;
-      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);const iw=Math.min(img.width,drawW);bh+=img.height*(iw/img.width)+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);bh+=img.height*(drawW/img.width)+20}}
       ctx.fillStyle=hexAlpha(pal.deco,.15);roundRect(ctx,MX,y,CW,bh,12);ctx.fill();
       ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,12,bh);
       ctx.fillStyle=pal.sub;ctx.textBaseline='top';wrapped.forEach((line,i)=>ctx.fillText(line,MX+40,y+28+i*72));
       let noteY=y+28+wrapped.length*72+20;
-      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);const iw=Math.min(img.width,drawW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+40,noteY,iw,ih);noteY+=ih+20}}
+      for(const it of imgs_n){const img=await loadImg(it.url);if(img){const sc=it.scale||1;const drawW=Math.min((CW-56)/2*sc,CW-56);const drawH=img.height*(drawW/img.width);ctx.drawImage(img,MX+40,noteY,drawW,drawH);noteY+=drawH+20}}
       y+=bh+28;
     }
   }
