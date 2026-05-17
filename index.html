@@ -1466,7 +1466,9 @@ let annState={
   objects:[],         /* [{type,x1,y1,x2,y2,color,size,flipH,flipV}] */
   history:[],         /* undoスタック */
   redoStack:[],       /* redoスタック */
-  selected:-1,        /* 選択中オブジェクトのindex */
+  selected:-1,        /* 選択中オブジェクトのindex（単体） */
+  selectedSet:new Set(), /* 範囲選択中のindexセット */
+  selecting:false,    /* 範囲選択ドラッグ中 */
   tool:'arrow',       /* arrow/circle/rect */
   color:'#FF3B30',
   size:6,
@@ -1497,9 +1499,15 @@ function getAnnCanvas(){
       }
       if(hit>=0){annState.selected=hit;annDraw();return}
       annState.selected=-1;
-      annState.drawing=true;
-      annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
-      if(annState.tool==='pen')annState.currentPoints=[{x,y}];
+  annState.selectedSet=new Set();annState.selecting=false;
+      if(annState.tool==='select'){
+        annState.selecting=true;annState.selectedSet=new Set();
+        annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
+      }else{
+        annState.drawing=true;
+        annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
+        if(annState.tool==='pen')annState.currentPoints=[{x,y}];
+      }
     });
     annCanvas.addEventListener('pointermove',e=>{
       if(!annState.drawing)return;
@@ -1507,9 +1515,21 @@ function getAnnCanvas(){
       const {x,y}=canvasPos(e);
       annState.curX=x;annState.curY=y;
       if(annState.tool==='pen')annState.currentPoints.push({x,y});
+      if(annState.selecting){
+        /* 範囲内のオブジェクトをリアルタイムでハイライト */
+        const sx=Math.min(annState.startX,x),sy=Math.min(annState.startY,y);
+        const ex=Math.max(annState.startX,x),ey=Math.max(annState.startY,y);
+        annState.selectedSet=new Set();
+        annState.objects.forEach((obj,i)=>{
+          if(objInRect(obj,sx,sy,ex,ey))annState.selectedSet.add(i);
+        });
+      }
       annDraw();
     });
     annCanvas.addEventListener('pointerup',e=>{
+      if(annState.selecting){
+        annState.selecting=false;annDraw();return;
+      }
       if(!annState.drawing)return;
       annState.drawing=false;
       const {x,y}=canvasPos(e);
@@ -1607,6 +1627,28 @@ function annDraw(){
       annCtx.restore();
     }
   });
+  /* 範囲選択プレビュー */
+  if(annState.selecting){
+    const sx=Math.min(annState.startX,annState.curX),sy=Math.min(annState.startY,annState.curY);
+    const sw=Math.abs(annState.curX-annState.startX),sh=Math.abs(annState.curY-annState.startY);
+    annCtx.save();
+    annCtx.strokeStyle='rgba(100,180,255,.9)';annCtx.lineWidth=1.5;annCtx.setLineDash([5,4]);
+    annCtx.fillStyle='rgba(100,180,255,.08)';
+    annCtx.fillRect(sx,sy,sw,sh);annCtx.strokeRect(sx,sy,sw,sh);
+    annCtx.setLineDash([]);annCtx.restore();
+  }
+  /* 複数選択ハイライト */
+  annState.selectedSet.forEach(i=>{
+    const obj=annState.objects[i];if(!obj)return;
+    const bx1=obj.type==='pen'?Math.min(...obj.points.map(p=>p.x)):Math.min(obj.x1,obj.x2);
+    const by1=obj.type==='pen'?Math.min(...obj.points.map(p=>p.y)):Math.min(obj.y1,obj.y2);
+    const bx2=obj.type==='pen'?Math.max(...obj.points.map(p=>p.x)):Math.max(obj.x1,obj.x2);
+    const by2=obj.type==='pen'?Math.max(...obj.points.map(p=>p.y)):Math.max(obj.y1,obj.y2);
+    annCtx.save();
+    annCtx.strokeStyle='rgba(100,180,255,.9)';annCtx.lineWidth=1;annCtx.setLineDash([3,3]);
+    annCtx.strokeRect(bx1-4,by1-4,(bx2-bx1)+8,(by2-by1)+8);annCtx.setLineDash([]);
+    annCtx.restore();
+  });
   /* 描画中プレビュー */
   if(annState.drawing){
     annCtx.save();
@@ -1674,6 +1716,16 @@ function hitTest(obj,x,y){
   return x>=x1&&x<=x2&&y>=y1&&y<=y2;
 }
 
+/* オブジェクトが矩形範囲内に含まれるか判定 */
+function objInRect(obj,sx,sy,ex,ey){
+  if(obj.type==='pen'&&obj.points){
+    /* ペンはすべての点が範囲内に入れば選択 */
+    return obj.points.some(p=>p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey);
+  }
+  const cx=(obj.x1+obj.x2)/2,cy=(obj.y1+obj.y2)/2;
+  return cx>=sx&&cx<=ex&&cy>=sy&&cy<=ey;
+}
+
 /* アノテーション画面イベントは initAnnEvents() で登録（HTML挿入後に1回だけ） */
 let annEventsReady=false;
 function initAnnEvents(){
@@ -1682,7 +1734,7 @@ function initAnnEvents(){
   /* ツール選択 */
   document.querySelectorAll('#ann-screen [data-tool]').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      annState.tool=btn.dataset.tool;annState.selected=-1;
+      annState.tool=btn.dataset.tool;annState.selected=-1;annState.selectedSet=new Set();
       document.querySelectorAll('#ann-screen [data-tool]').forEach(b=>b.classList.toggle('on',b===btn));
       annDraw();
     });
@@ -1715,8 +1767,13 @@ function initAnnEvents(){
 
   /* 選択削除 */
   document.getElementById('ann-del-sel').onclick=()=>{
-    if(annState.selected<0)return;
-    annSaveHistory();annState.objects.splice(annState.selected,1);annState.selected=-1;annDraw();
+    if(annState.selectedSet.size>0){
+      annSaveHistory();
+      annState.objects=annState.objects.filter((_,i)=>!annState.selectedSet.has(i));
+      annState.selectedSet=new Set();annState.selected=-1;annDraw();
+    }else if(annState.selected>=0){
+      annSaveHistory();annState.objects.splice(annState.selected,1);annState.selected=-1;annDraw();
+    }
   };
 
   /* 反転（選択中オブジェクトの座標を反転） */
@@ -1769,8 +1826,13 @@ function initAnnEvents(){
       if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
       e.preventDefault();
       annSaveHistory();
-      annState.objects.splice(annState.selected,1);
-      annState.selected=-1;annDraw();
+      if(annState.selectedSet.size>0){
+        annState.objects=annState.objects.filter((_,i)=>!annState.selectedSet.has(i));
+        annState.selectedSet=new Set();annState.selected=-1;
+      }else{
+        annState.objects.splice(annState.selected,1);annState.selected=-1;
+      }
+      annDraw();
     }
   },true);
 
@@ -1823,6 +1885,7 @@ window.addEventListener('focus',()=>{
   <div class="ann-toolbar">
     <div class="ann-tool-row">
       <span class="ann-tool-lbl">ツール</span>
+      <button class="ann-tool-btn" data-tool="select">⬚ 選択</button>
       <button class="ann-tool-btn on" data-tool="arrow">→ 矢印</button>
       <button class="ann-tool-btn" data-tool="circle">○ 円</button>
       <button class="ann-tool-btn" data-tool="rect">□ 四角</button>
