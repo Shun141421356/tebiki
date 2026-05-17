@@ -124,6 +124,10 @@ body{font-family:'Zen Kaku Gothic New',sans-serif;color:var(--ink);display:flex;
 .blk-img-del{position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1}
 .blk-img-add{margin-top:6px;padding:4px 10px;border-radius:8px;border:1px dashed var(--paper3);background:transparent;color:var(--ink3);font-size:11px;cursor:pointer;font-family:'Zen Kaku Gothic New',sans-serif;display:inline-flex;align-items:center;gap:4px}
 .blk-img-add:hover{border-color:var(--accent2);color:var(--accent)}
+.url-preview{margin-top:4px;display:flex;flex-direction:column;gap:3px}
+.url-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);background:var(--accent-light);border:1px solid var(--accent2);border-radius:6px;padding:3px 8px;text-decoration:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;cursor:pointer}
+.url-chip:hover{background:var(--accent);color:#fff}
+.url-chip svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .ref-badge{display:inline-flex;align-items:center;gap:3px;background:var(--accent-light);border:1px solid var(--accent2);border-radius:20px;padding:3px 8px;font-size:11px;color:var(--accent);cursor:pointer;margin:2px 2px 0 0;user-select:none}
 .ref-badge:hover{background:var(--accent);color:#fff}
 .ref-num{font-weight:600;font-size:13px;line-height:1}
@@ -683,6 +687,29 @@ function openManual(id){
   renderBlocks(m.blocks||[]);goTo('editor');
 }
 
+/* ═══ URL DETECTION ═══ */
+const URL_RE=/https?:\/\/[^\s\u3000-\u9FFF\uFF01-\uFF60\u3001-\u303F"'<>()[\]{}]+/g;
+
+function extractUrls(text){
+  return [...(text||'').matchAll(URL_RE)].map(m=>m[0]);
+}
+
+function updateUrlPreview(bcont,text){
+  let preview=bcont.querySelector('.url-preview');
+  const urls=extractUrls(text);
+  if(!urls.length){if(preview)preview.remove();return}
+  if(!preview){preview=document.createElement('div');preview.className='url-preview';bcont.appendChild(preview)}
+  preview.innerHTML='';
+  urls.forEach(url=>{
+    const chip=document.createElement('a');
+    chip.className='url-chip';chip.href=url;chip.target='_blank';chip.rel='noopener noreferrer';
+    chip.title=url;
+    chip.innerHTML=`<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>${esc(url.length>50?url.slice(0,50)+'…':url)}`;
+    chip.onclick=e=>{e.stopPropagation()};
+    preview.appendChild(chip);
+  });
+}
+
 /* ═══ BLOCKS ═══ */
 let stepCnt=0;
 function renderBlocks(blocks){
@@ -747,7 +774,18 @@ function mkBlk(b){
   refSec.appendChild(refAddBtn);
   extras.appendChild(refSec);
 
-  if(inp){inp.addEventListener('input',()=>{ar(inp);schedSave()});if(inp.tagName==='TEXTAREA')ar(inp)}
+  if(inp){
+    inp.addEventListener('input',()=>{
+      ar(inp);schedSave();
+      if(['text','step','note'].includes(b.type))
+        updateUrlPreview(d.querySelector('.bcont'),inp.value);
+    });
+    if(inp.tagName==='TEXTAREA'){
+      ar(inp);
+      if(['text','step','note'].includes(b.type))
+        updateUrlPreview(d.querySelector('.bcont'),inp.value);
+    }
+  }
   d.querySelector('.bdel').onclick=()=>{d.remove();renum();schedSave()};
   return d;
 }
@@ -1076,6 +1114,43 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
   const W=2480,H=3508;const c=document.createElement('canvas');c.width=W;c.height=H;
   const ctx=c.getContext('2d');ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
   const MX=160,MY=180,CW=W-MX*2;let y=MY;
+  /* リンク位置を収集してgenPDFに返す [{url,x,y,w,h} in Canvas座標] */
+  const linkRects=[];
+
+  /* URLを含むテキストをCanvas上に描画し、URL部分は青色・下線付きにする */
+  function drawTextWithUrls(text,x,startY,maxW,fontSize,lineH,textColor,accentColor){
+    const urlRe=/https?:\/\/[^\s\u3000-\u9FFF\uFF01-\uFF60\u3001-\u303F"'<>()[\]{}]+/g;
+    const lines=wrapText(ctx,text,maxW);
+    lines.forEach((line,li)=>{
+      const ly=startY+li*lineH;
+      // 行内のURL区間を特定
+      let segments=[];let last=0;
+      let m;urlRe.lastIndex=0;
+      const re=new RegExp(urlRe.source,'g');
+      while((m=re.exec(line))!==null){
+        if(m.index>last)segments.push({t:line.slice(last,m.index),link:false});
+        segments.push({t:m[0],link:true,url:m[0]});
+        last=m.index+m[0].length;
+      }
+      if(last<line.length)segments.push({t:line.slice(last),link:false});
+      if(!segments.length)segments=[{t:line,link:false}];
+      let cx=x;
+      segments.forEach(seg=>{
+        ctx.fillStyle=seg.link?accentColor:textColor;
+        ctx.fillText(seg.t,cx,ly);
+        const tw=ctx.measureText(seg.t).width;
+        if(seg.link){
+          // 下線
+          ctx.fillStyle=accentColor;
+          ctx.fillRect(cx,ly+fontSize*1.1,tw,Math.max(2,fontSize*.06));
+          linkRects.push({url:seg.url,cx,cy:ly,cw:tw,ch:lineH});
+        }
+        cx+=tw;
+      });
+    });
+    return lines.length;
+  }
+
   if(title!==null){
     ctx.fillStyle=pal.accent;ctx.fillRect(MX,y,CW,8);y+=32;
     ctx.font=`500 104px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';
@@ -1095,17 +1170,17 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
       stepN++;
       ctx.beginPath();ctx.arc(MX+36,y+36,36,0,Math.PI*2);ctx.fillStyle=pal.accent;ctx.fill();
       ctx.font=`500 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(stepN),MX+36,y+36);ctx.textAlign='left';
-      ctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.text;ctx.textBaseline='top';
-      const wrapped=wrapText(ctx,b.val||'',CW-104);wrapped.forEach((line,i)=>ctx.fillText(line,MX+104,y+i*84));
-      let blockH=Math.max(84,wrapped.length*84)+28;
+      ctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;ctx.textBaseline='top';
+      const nLines=drawTextWithUrls(b.val||'',MX+104,y,CW-104,60,84,pal.text,pal.accent);
+      let blockH=Math.max(84,nLines*84)+28;
       const imgs_s=b.imgs||(b.img?[b.img]:[]);
       for(const src of imgs_s){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW-104),ih=img.height*(iw/img.width);ctx.drawImage(img,MX+104,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX+104,y+blockH);blockH+=60}
       y+=blockH;
     }else if(b.type==='text'){
-      ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.text;ctx.textBaseline='top';
-      const wrapped=wrapText(ctx,b.val||'',CW);wrapped.forEach((line,i)=>ctx.fillText(line,MX,y+i*80));
-      let blockH=wrapped.length*80+28;
+      ctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;ctx.textBaseline='top';
+      const nLines=drawTextWithUrls(b.val||'',MX,y,CW,56,80,pal.text,pal.accent);
+      let blockH=nLines*80+28;
       const imgs_t=b.imgs||(b.img?[b.img]:[]);
       for(const src of imgs_t){const img=await loadImg(src);if(img){const iw=Math.min(img.width,CW),ih=img.height*(iw/img.width);ctx.drawImage(img,MX,y+blockH,iw,ih);blockH+=ih+20}}
       if(b.refs&&b.refs.length){ctx.font=`400 40px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.accent;ctx.textBaseline='top';ctx.fillText(buildRefText(b.refs),MX,y+blockH);blockH+=60}
@@ -1126,7 +1201,7 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
   }
   ctx.fillStyle=pal.accent;ctx.fillRect(MX,H-120,CW,4);
   ctx.font=`400 44px 'Zen Kaku Gothic New',sans-serif`;ctx.fillStyle=pal.sub;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText('▲  てびき',W/2,H-96);ctx.textAlign='left';
-  return c.toDataURL('image/jpeg',.95);
+  return {dataUrl:c.toDataURL('image/jpeg',.95),linkRects,W,H};
 }
 
 /* 画像の実際の描画高さを計算（Canvasの幅に合わせてスケール） */
@@ -1190,8 +1265,17 @@ async function genPDF(){
     const pages=await paginateBlocks(m.blocks||[]);
     for(let i=0;i<pages.length;i++){
       doc.addPage();
-      const imgData=await renderPage(pal,i===0?(m.title||'てびき'):null,i===0?(m.tags||[]):null,pages[i],pages[i]._stepOffset);
-      doc.addImage(imgData,'JPEG',0,0,PW,PH);await tick();
+      const pageResult=await renderPage(pal,i===0?(m.title||'てびき'):null,i===0?(m.tags||[]):null,pages[i],pages[i]._stepOffset);
+      doc.addImage(pageResult.dataUrl,'JPEG',0,0,PW,PH);
+      /* URLリンクをjsPDFレイヤーで追加（Canvas座標→mm変換） */
+      pageResult.linkRects.forEach(lr=>{
+        const x=lr.cx/pageResult.W*PW;
+        const y=lr.cy/pageResult.H*PH;
+        const w=lr.cw/pageResult.W*PW;
+        const h=lr.ch/pageResult.H*PH;
+        doc.link(x,y,w,h,{url:lr.url});
+      });
+      await tick();
     }
     doc.addPage();
     const bc=document.createElement('canvas');bc.width=2480;bc.height=3508;
