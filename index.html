@@ -944,17 +944,7 @@ async function _renderAnnotationsOnImg(url,objects,flipH,flipV){
     ctx.translate(flipH?img.width:0,flipV?img.height:0);
     ctx.scale(flipH?-1:1,flipV?-1:1);
     ctx.drawImage(img,0,0);ctx.restore();
-    objects.forEach(obj=>{
-      ctx.save();ctx.strokeStyle=obj.color;ctx.fillStyle=obj.color;
-      ctx.lineWidth=obj.size;ctx.lineCap='round';ctx.lineJoin='round';
-      if(obj.type==='arrow'){drawArrow(ctx,obj.x1,obj.y1,obj.x2,obj.y2,obj.size)}
-      else if(obj.type==='circle'){
-        const rx=Math.abs(obj.x2-obj.x1)/2,ry=Math.abs(obj.y2-obj.y1)/2;
-        const cx=(obj.x1+obj.x2)/2,cy=(obj.y1+obj.y2)/2;
-        ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
-      }else if(obj.type==='rect'){ctx.strokeRect(obj.x1,obj.y1,obj.x2-obj.x1,obj.y2-obj.y1)}
-      ctx.restore();
-    });
+    objects.forEach(obj=>drawObj(ctx,obj));
     return c.toDataURL('image/jpeg',.92);
   }catch{return null}
 }
@@ -1471,9 +1461,11 @@ document.getElementById('photo-input').onchange=function(){const f=this.files[0]
 /* ═══ ANNOTATION ENGINE ═══ */
 let annState={
   baseImg:null,       /* HTMLImageElement（元画像） */
+  currentPoints:[],   /* ペン描画中の座標列 */
   baseUrl:'',         /* Storage URL */
   objects:[],         /* [{type,x1,y1,x2,y2,color,size,flipH,flipV}] */
   history:[],         /* undoスタック */
+  redoStack:[],       /* redoスタック */
   selected:-1,        /* 選択中オブジェクトのindex */
   tool:'arrow',       /* arrow/circle/rect */
   color:'#FF3B30',
@@ -1507,12 +1499,15 @@ function getAnnCanvas(){
       annState.selected=-1;
       annState.drawing=true;
       annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
+      if(annState.tool==='pen')annState.currentPoints=[{x,y}];
     });
     annCanvas.addEventListener('pointermove',e=>{
       if(!annState.drawing)return;
       e.preventDefault();
       const {x,y}=canvasPos(e);
-      annState.curX=x;annState.curY=y;annDraw();
+      annState.curX=x;annState.curY=y;
+      if(annState.tool==='pen')annState.currentPoints.push({x,y});
+      annDraw();
     });
     annCanvas.addEventListener('pointerup',e=>{
       if(!annState.drawing)return;
@@ -1521,13 +1516,12 @@ function getAnnCanvas(){
       const dx=x-annState.startX,dy=y-annState.startY;
       if(Math.sqrt(dx*dx+dy*dy)<4)return;
       annSaveHistory();
-      annState.objects.push({
-        type:annState.tool,
-        x1:annState.startX,y1:annState.startY,
-        x2:x,y2:y,
-        color:annState.color,
-        size:annState.size
-      });
+      if(annState.tool==='pen'){
+        annState.objects.push({type:'pen',points:[...annState.currentPoints],color:annState.color,size:annState.size,x1:0,y1:0,x2:0,y2:0});
+        annState.currentPoints=[];
+      }else{
+        annState.objects.push({type:annState.tool,x1:annState.startX,y1:annState.startY,x2:x,y2:y,color:annState.color,size:annState.size});
+      }
       annState.selected=annState.objects.length-1;
       annDraw();
     });
@@ -1541,6 +1535,7 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
   annState.baseUrl=url;
   annState.objects=existingAnnotations?JSON.parse(JSON.stringify(existingAnnotations)):[];
   annState.history=[];
+  annState.redoStack=[];
   annState.selected=-1;
   /* flipH/flipVは図形座標で管理するため不要 */
   annState.onDone=onDone;
@@ -1584,6 +1579,7 @@ async function openAnnotationEditor(url, existingAnnotations, flipH, flipV, iwRe
 function annSaveHistory(){
   annState.history.push(JSON.stringify({objects:annState.objects}));
   if(annState.history.length>50)annState.history.shift();
+  annState.redoStack=[]; /* 新操作でRedoをクリア */
 }
 
 function annDraw(){
@@ -1596,31 +1592,20 @@ function annDraw(){
   /* オブジェクト描画 */
   objects.forEach((obj,i)=>{
     const isSel=i===selected;
-    annCtx.save();
-    annCtx.strokeStyle=obj.color;
-    annCtx.fillStyle='transparent';
-    annCtx.lineWidth=obj.size;
-    annCtx.lineCap='round';
-    annCtx.lineJoin='round';
-    if(isSel){annCtx.shadowColor='rgba(255,255,255,.8)';annCtx.shadowBlur=8}
-    if(obj.type==='arrow'){
-      drawArrow(annCtx,obj.x1,obj.y1,obj.x2,obj.y2,obj.size);
-    }else if(obj.type==='circle'){
-      const rx=Math.abs(obj.x2-obj.x1)/2,ry=Math.abs(obj.y2-obj.y1)/2;
-      const cx=(obj.x1+obj.x2)/2,cy=(obj.y1+obj.y2)/2;
-      annCtx.beginPath();annCtx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-      annCtx.stroke();
-    }else if(obj.type==='rect'){
-      annCtx.strokeRect(obj.x1,obj.y1,obj.x2-obj.x1,obj.y2-obj.y1);
-    }
+    if(isSel){annCtx.save();annCtx.shadowColor='rgba(255,255,255,.8)';annCtx.shadowBlur=8}
+    drawObj(annCtx,obj);
     if(isSel){
+      annCtx.restore();
       /* 選択ハンドル */
-      const x1=Math.min(obj.x1,obj.x2),y1=Math.min(obj.y1,obj.y2);
-      const x2=Math.max(obj.x1,obj.x2),y2=Math.max(obj.y1,obj.y2);
+      const bx1=obj.type==='pen'?Math.min(...obj.points.map(p=>p.x)):Math.min(obj.x1,obj.x2);
+      const by1=obj.type==='pen'?Math.min(...obj.points.map(p=>p.y)):Math.min(obj.y1,obj.y2);
+      const bx2=obj.type==='pen'?Math.max(...obj.points.map(p=>p.x)):Math.max(obj.x1,obj.x2);
+      const by2=obj.type==='pen'?Math.max(...obj.points.map(p=>p.y)):Math.max(obj.y1,obj.y2);
+      annCtx.save();
       annCtx.strokeStyle='rgba(255,255,255,.7)';annCtx.lineWidth=1;annCtx.setLineDash([4,4]);
-      annCtx.strokeRect(x1-4,y1-4,(x2-x1)+8,(y2-y1)+8);annCtx.setLineDash([]);
+      annCtx.strokeRect(bx1-4,by1-4,(bx2-bx1)+8,(by2-by1)+8);annCtx.setLineDash([]);
+      annCtx.restore();
     }
-    annCtx.restore();
   });
   /* 描画中プレビュー */
   if(annState.drawing){
@@ -1635,9 +1620,29 @@ function annDraw(){
       annCtx.beginPath();annCtx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);annCtx.stroke();
     }else if(annState.tool==='rect'){
       annCtx.strokeRect(annState.startX,annState.startY,annState.curX-annState.startX,annState.curY-annState.startY);
+    }else if(annState.tool==='pen'&&annState.currentPoints.length>1){
+      annCtx.beginPath();annCtx.moveTo(annState.currentPoints[0].x,annState.currentPoints[0].y);
+      annState.currentPoints.slice(1).forEach(p=>annCtx.lineTo(p.x,p.y));annCtx.stroke();
     }
     annCtx.restore();
   }
+}
+
+function drawObj(ctx,obj){
+  ctx.save();
+  ctx.strokeStyle=obj.color;ctx.fillStyle=obj.color;
+  ctx.lineWidth=obj.size;ctx.lineCap='round';ctx.lineJoin='round';
+  if(obj.type==='arrow'){drawArrow(ctx,obj.x1,obj.y1,obj.x2,obj.y2,obj.size)}
+  else if(obj.type==='circle'){
+    const rx=Math.abs(obj.x2-obj.x1)/2,ry=Math.abs(obj.y2-obj.y1)/2;
+    const cx=(obj.x1+obj.x2)/2,cy=(obj.y1+obj.y2)/2;
+    ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  }else if(obj.type==='rect'){ctx.strokeRect(obj.x1,obj.y1,obj.x2-obj.x1,obj.y2-obj.y1)}
+  else if(obj.type==='pen'&&obj.points&&obj.points.length>1){
+    ctx.beginPath();ctx.moveTo(obj.points[0].x,obj.points[0].y);
+    obj.points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawArrow(ctx,x1,y1,x2,y2,size){
@@ -1735,24 +1740,47 @@ function initAnnEvents(){
   };
 
   /* キャンセル */
+  document.getElementById('ann-cancel').onclick=()=>{document.getElementById('ann-screen').classList.remove('open')};
+
+  /* キーボードショートカット（編集画面アクティブ時のみ） */
+  document.addEventListener('keydown',e=>{
+    if(!document.getElementById('ann-screen').classList.contains('open'))return;
+    const mod=e.ctrlKey||e.metaKey;
+    /* Ctrl+Z: Undo */
+    if(mod&&(e.key==='z'||e.key==='Z')&&!e.shiftKey){
+      e.preventDefault();e.stopPropagation();
+      if(!annState.history.length)return;
+      const cur=JSON.stringify({objects:annState.objects});
+      if(!annState.redoStack)annState.redoStack=[];
+      annState.redoStack.push(cur);
+      const prev=JSON.parse(annState.history.pop());
+      annState.objects=prev.objects;annState.selected=-1;annDraw();
+    }
+    /* Ctrl+Y / Ctrl+Shift+Z: Redo */
+    if(mod&&(e.key==='y'||e.key==='Y'||(e.key==='Z'&&e.shiftKey))){
+      e.preventDefault();e.stopPropagation();
+      if(!annState.redoStack||!annState.redoStack.length)return;
+      annState.history.push(JSON.stringify({objects:annState.objects}));
+      const next=JSON.parse(annState.redoStack.pop());
+      annState.objects=next.objects;annState.selected=-1;annDraw();
+    }
+    /* Delete / Backspace: 選択中オブジェクト削除 */
+    if((e.key==='Delete'||e.key==='Backspace')&&annState.selected>=0){
+      if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
+      e.preventDefault();
+      annSaveHistory();
+      annState.objects.splice(annState.selected,1);
+      annState.selected=-1;annDraw();
+    }
+  },true);
+
   /* 完了 */
   document.getElementById('ann-done').onclick=()=>{
     const ac2=getAnnCanvas();const W=ac2.width,H=ac2.height;
     const out=document.createElement('canvas');out.width=W;out.height=H;
     const octx=out.getContext('2d');
     octx.drawImage(annState.baseImg,0,0,W,H);
-    annState.objects.forEach(obj=>{
-      octx.save();
-      octx.strokeStyle=obj.color;octx.fillStyle=obj.color;
-      octx.lineWidth=obj.size;octx.lineCap='round';octx.lineJoin='round';
-      if(obj.type==='arrow'){drawArrow(octx,obj.x1,obj.y1,obj.x2,obj.y2,obj.size)}
-      else if(obj.type==='circle'){
-        const rx=Math.abs(obj.x2-obj.x1)/2,ry=Math.abs(obj.y2-obj.y1)/2;
-        const cx=(obj.x1+obj.x2)/2,cy=(obj.y1+obj.y2)/2;
-        octx.beginPath();octx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);octx.stroke();
-      }else if(obj.type==='rect'){octx.strokeRect(obj.x1,obj.y1,obj.x2-obj.x1,obj.y2-obj.y1)}
-      octx.restore();
-    });
+    annState.objects.forEach(obj=>drawObj(octx,obj));
     const compositeDataUrl=out.toDataURL('image/jpeg',.92);
     document.getElementById('ann-screen').classList.remove('open');
     if(annState.onDone)annState.onDone(compositeDataUrl,annState.objects);
@@ -1798,6 +1826,7 @@ window.addEventListener('focus',()=>{
       <button class="ann-tool-btn on" data-tool="arrow">→ 矢印</button>
       <button class="ann-tool-btn" data-tool="circle">○ 円</button>
       <button class="ann-tool-btn" data-tool="rect">□ 四角</button>
+      <button class="ann-tool-btn" data-tool="pen">✏️ ペン</button>
       <button class="ann-undo-btn" id="ann-undo">↩ 戻す</button>
       <button class="ann-del-btn" id="ann-del-sel">✕ 削除</button>
     </div>
