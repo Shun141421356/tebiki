@@ -1499,7 +1499,6 @@ function getAnnCanvas(){
       }
       if(hit>=0){annState.selected=hit;annDraw();return}
       annState.selected=-1;
-  annState.selectedSet=new Set();annState.selecting=false;
       if(annState.tool==='select'){
         annState.selecting=true;annState.selectedSet=new Set();
         annState.startX=x;annState.startY=y;annState.curX=x;annState.curY=y;
@@ -1510,13 +1509,12 @@ function getAnnCanvas(){
       }
     });
     annCanvas.addEventListener('pointermove',e=>{
-      if(!annState.drawing)return;
+      if(!annState.drawing&&!annState.selecting)return;
       e.preventDefault();
       const {x,y}=canvasPos(e);
       annState.curX=x;annState.curY=y;
-      if(annState.tool==='pen')annState.currentPoints.push({x,y});
+      if(annState.drawing&&annState.tool==='pen')annState.currentPoints.push({x,y});
       if(annState.selecting){
-        /* 範囲内のオブジェクトをリアルタイムでハイライト */
         const sx=Math.min(annState.startX,x),sy=Math.min(annState.startY,y);
         const ex=Math.max(annState.startX,x),ey=Math.max(annState.startY,y);
         annState.selectedSet=new Set();
