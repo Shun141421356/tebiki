@@ -1367,33 +1367,52 @@ async function measureImgH(src, maxW){
 }
 
 async function paginateBlocks(blocks){
-  const MAX=3160;
-  const CW=2480-160*2; /* renderPage と同じ計算 */
+  const MAX=3100; /* 安全マージンを少し大きめに取る */
+  const CW=2480-160*2;
 
-  /* 各ブロックの高さを非同期で計算 */
-  const heights = await Promise.all(blocks.map(async b=>{
-    const textMaxW = b.type==='step' ? CW-104 : b.type==='note' ? CW-56 : CW;
-    /* テキスト行数を大まかに推定（Canvasなしなので文字数ベース） */
-    const charsPerLine = b.type==='step' ? 18 : b.type==='note' ? 22 : 24;
-    const lineH = b.type==='step' ? 84 : b.type==='note' ? 76 : 80;
+  /* 計測用Canvas（renderPageと同じフォント設定） */
+  const mc=document.createElement('canvas');mc.width=2480;mc.height=100;
+  const mctx=mc.getContext('2d');
+
+  /* ブロックの正確な高さをCanvas測定で計算 */
+  const heights=await Promise.all(blocks.map(async b=>{
     const imgItems=(b.imgs||[]).map(i=>typeof i==='string'?{url:i,scale:1}:i);
     if(!imgItems.length&&b.img)imgItems.push({url:b.img,scale:1});
-    let imgH=0;
-    for(const it of imgItems){imgH+=await measureImgH(it.url,textMaxW/2*(it.scale||1))}
     const refH=(b.refs&&b.refs.length)?60:0;
-    if(b.type==='h2') return 140;
-    if(b.type==='h3') return 100;
-    if(b.type==='step') return Math.max(112, Math.ceil((b.val||'').length/charsPerLine)*lineH+28) + imgH + refH;
-    if(b.type==='text') return Math.ceil((b.val||'').length/charsPerLine)*lineH+28 + imgH + refH;
-    if(b.type==='note') return Math.max(148, Math.ceil((b.val||'').length/charsPerLine)*lineH+76) + imgH;
+
+    if(b.type==='h2')return 140+20;
+    if(b.type==='h3')return 100+20;
+
+    if(b.type==='step'){
+      mctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;
+      const lines=wrapText(mctx,b.val||'',CW-104);
+      const textH=Math.max(84,lines.length*84)+28;
+      let imgH=0;
+      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-104)/2*(it.scale||1),CW-104))}
+      return textH+imgH+refH+20;
+    }
+    if(b.type==='text'){
+      mctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;
+      const lines=wrapText(mctx,b.val||'',CW);
+      const textH=lines.length*80+28;
+      let imgH=0;
+      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min(CW/2*(it.scale||1),CW))}
+      return textH+imgH+refH+20;
+    }
+    if(b.type==='note'){
+      mctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
+      const lines=wrapText(mctx,b.val||'',CW-56);
+      let imgH=0;
+      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-56)/2*(it.scale||1),CW-56))}
+      return Math.max(120,lines.length*76)+48+imgH+28;
+    }
     return 80;
   }));
 
   const pages=[];let cur=[];let h=0;
   blocks.forEach((b,i)=>{
     const bh=heights[i];
-    /* 1ブロックがMAXを超える場合は単独ページに */
-    if(h+bh>MAX && cur.length){pages.push(cur);cur=[];h=0}
+    if(h+bh>MAX&&cur.length){pages.push(cur);cur=[];h=0}
     cur.push(b);h+=bh;
   });
   if(cur.length)pages.push(cur);
@@ -1743,7 +1762,11 @@ function initAnnEvents(){
     dot.addEventListener('click',()=>{
       annState.color=dot.dataset.color;
       document.querySelectorAll('#ann-screen .ann-color-dot').forEach(d=>d.classList.toggle('on',d===dot));
-      if(annState.selected>=0){annSaveHistory();annState.objects[annState.selected].color=annState.color;annDraw()}
+      if(annState.selectedSet.size>0){
+        annSaveHistory();
+        annState.selectedSet.forEach(i=>{if(annState.objects[i])annState.objects[i].color=annState.color});
+        annDraw();
+      }else if(annState.selected>=0){annSaveHistory();annState.objects[annState.selected].color=annState.color;annDraw()}
     });
   });
 
@@ -1752,7 +1775,11 @@ function initAnnEvents(){
   const sv=document.getElementById('ann-size-val');
   sl.addEventListener('input',()=>{
     annState.size=Number(sl.value);sv.textContent=sl.value;
-    if(annState.selected>=0){annSaveHistory();annState.objects[annState.selected].size=annState.size;annDraw()}
+    if(annState.selectedSet.size>0){
+      annSaveHistory();
+      annState.selectedSet.forEach(i=>{if(annState.objects[i])annState.objects[i].size=annState.size});
+      annDraw();
+    }else if(annState.selected>=0){annSaveHistory();annState.objects[annState.selected].size=annState.size;annDraw()}
   });
 
   /* Undo */
@@ -1776,21 +1803,27 @@ function initAnnEvents(){
 
   /* 反転（選択中オブジェクトの座標を反転） */
   document.getElementById('ann-flip-h').onclick=()=>{
-    if(annState.selected<0){alert('反転する図形を選択してください');return}
+    const targetsH=annState.selectedSet.size>0?[...annState.selectedSet]:(annState.selected>=0?[annState.selected]:[]);
+    if(!targetsH.length){alert('反転する図形を選択してください');return}
     annSaveHistory();
-    const obj=annState.objects[annState.selected];
     const W=getAnnCanvas().width;
-    /* x座標をCanvas幅で反転 */
-    obj.x1=W-obj.x1;obj.x2=W-obj.x2;
+    targetsH.forEach(i=>{
+      const obj=annState.objects[i];if(!obj)return;
+      if(obj.type==='pen'&&obj.points){obj.points=obj.points.map(p=>({x:W-p.x,y:p.y}))}
+      else{obj.x1=W-obj.x1;obj.x2=W-obj.x2}
+    });
     annDraw();
   };
   document.getElementById('ann-flip-v').onclick=()=>{
-    if(annState.selected<0){alert('反転する図形を選択してください');return}
+    const targetsV=annState.selectedSet.size>0?[...annState.selectedSet]:(annState.selected>=0?[annState.selected]:[]);
+    if(!targetsV.length){alert('反転する図形を選択してください');return}
     annSaveHistory();
-    const obj=annState.objects[annState.selected];
     const H=getAnnCanvas().height;
-    /* y座標をCanvas高さで反転 */
-    obj.y1=H-obj.y1;obj.y2=H-obj.y2;
+    targetsV.forEach(i=>{
+      const obj=annState.objects[i];if(!obj)return;
+      if(obj.type==='pen'&&obj.points){obj.points=obj.points.map(p=>({x:p.x,y:H-p.y}))}
+      else{obj.y1=H-obj.y1;obj.y2=H-obj.y2}
+    });
     annDraw();
   };
 
@@ -1820,7 +1853,7 @@ function initAnnEvents(){
       annState.objects=next.objects;annState.selected=-1;annDraw();
     }
     /* Delete / Backspace: 選択中オブジェクト削除 */
-    if((e.key==='Delete'||e.key==='Backspace')&&annState.selected>=0){
+    if((e.key==='Delete'||e.key==='Backspace')&&(annState.selected>=0||annState.selectedSet.size>0)){
       if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
       e.preventDefault();
       annSaveHistory();
