@@ -1367,8 +1367,11 @@ async function measureImgH(src, maxW){
 }
 
 async function paginateBlocks(blocks){
-  const MAX=3100; /* 安全マージンを少し大きめに取る */
+  const MAX=3000; /* 安全マージンを十分に取る */
   const CW=2480-160*2;
+
+  /* フォント読み込み完了を待つ（計測精度のため） */
+  try{await document.fonts.load(`400 60px 'Zen Kaku Gothic New'`)}catch(e){}
 
   /* 計測用Canvas（renderPageと同じフォント設定） */
   const mc=document.createElement('canvas');mc.width=2480;mc.height=100;
@@ -1380,8 +1383,8 @@ async function paginateBlocks(blocks){
     if(!imgItems.length&&b.img)imgItems.push({url:b.img,scale:1});
     const refH=(b.refs&&b.refs.length)?60:0;
 
-    if(b.type==='h2')return 140+20;
-    if(b.type==='h3')return 100+20;
+    if(b.type==='h2')return 160;
+    if(b.type==='h3')return 120;
 
     if(b.type==='step'){
       mctx.font=`400 60px 'Zen Kaku Gothic New',sans-serif`;
@@ -1389,7 +1392,8 @@ async function paginateBlocks(blocks){
       const textH=Math.max(84,lines.length*84)+28;
       let imgH=0;
       for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-104)/2*(it.scale||1),CW-104))}
-      return textH+imgH+refH+20;
+      /* 安全マージン1.15倍 */
+      return Math.ceil((textH+imgH+refH+20)*1.15);
     }
     if(b.type==='text'){
       mctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;
@@ -1397,14 +1401,14 @@ async function paginateBlocks(blocks){
       const textH=lines.length*80+28;
       let imgH=0;
       for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min(CW/2*(it.scale||1),CW))}
-      return textH+imgH+refH+20;
+      return Math.ceil((textH+imgH+refH+20)*1.15);
     }
     if(b.type==='note'){
       mctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
       const lines=wrapText(mctx,b.val||'',CW-56);
       let imgH=0;
       for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-56)/2*(it.scale||1),CW-56))}
-      return Math.max(120,lines.length*76)+48+imgH+28;
+      return Math.ceil((Math.max(120,lines.length*76)+48+imgH+28)*1.15);
     }
     return 80;
   }));
@@ -1432,6 +1436,8 @@ async function genPDF(){
     const cc=document.createElement('canvas');cc.width=2480;cc.height=3508;
     renderCover(cc,selCover,selColor,m.title||'てびき');
     doc.addImage(cc.toDataURL('image/jpeg',.95),'JPEG',0,0,PW,PH);
+    msg.textContent='フォント読み込み中...';await tick();
+    try{await document.fonts.ready}catch(e){}
     msg.textContent='本文を組版中...';await tick();
     const pages=await paginateBlocks(m.blocks||[]);
     for(let i=0;i<pages.length;i++){
