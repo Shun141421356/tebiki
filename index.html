@@ -1356,13 +1356,13 @@ async function renderPage(pal,title,tags,pageBlocks,stepOffset){
 }
 
 /* 画像の実際の描画高さを計算（Canvasの幅に合わせてスケール） */
-async function measureImgH(src, maxW){
+async function measureImgH(src, drawW){
   if(!src) return 0;
   try{
-    const img = await loadImg(src);
-    if(!img) return 0;
-    const iw = Math.min(img.width, maxW);
-    return Math.round(img.height * (iw / img.width)) + 20; /* +20 は余白 */
+    const img=await loadImg(src);
+    if(!img||!img.width) return 0;
+    /* renderPage と同じ計算: drawW は固定、高さはアスペクト比で決まる */
+    return Math.round(img.height*(drawW/img.width))+20;
   }catch{return 0}
 }
 
@@ -1391,24 +1391,33 @@ async function paginateBlocks(blocks){
       const lines=wrapText(mctx,b.val||'',CW-104);
       const textH=Math.max(84,lines.length*84)+28;
       let imgH=0;
-      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-104)/2*(it.scale||1),CW-104))}
-      /* 安全マージン1.15倍 */
-      return Math.ceil((textH+imgH+refH+20)*1.15);
+      for(const it of imgItems){
+        const dw=Math.min((CW-104)/2*(it.scale||1),CW-104);
+        imgH+=await measureImgH(it.composite||it.url,dw);
+      }
+      /* テキスト高さに安全マージン、写真高さは正確な値 */
+      return Math.ceil(textH*1.15)+imgH+refH+20;
     }
     if(b.type==='text'){
       mctx.font=`400 56px 'Zen Kaku Gothic New',sans-serif`;
       const lines=wrapText(mctx,b.val||'',CW);
       const textH=lines.length*80+28;
       let imgH=0;
-      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min(CW/2*(it.scale||1),CW))}
-      return Math.ceil((textH+imgH+refH+20)*1.15);
+      for(const it of imgItems){
+        const dw=Math.min(CW/2*(it.scale||1),CW);
+        imgH+=await measureImgH(it.composite||it.url,dw);
+      }
+      return Math.ceil(textH*1.15)+imgH+refH+20;
     }
     if(b.type==='note'){
       mctx.font=`400 52px 'Zen Kaku Gothic New',sans-serif`;
       const lines=wrapText(mctx,b.val||'',CW-56);
       let imgH=0;
-      for(const it of imgItems){imgH+=await measureImgH(it.composite||it.url,Math.min((CW-56)/2*(it.scale||1),CW-56))}
-      return Math.ceil((Math.max(120,lines.length*76)+48+imgH+28)*1.15);
+      for(const it of imgItems){
+        const dw=Math.min((CW-56)/2*(it.scale||1),CW-56);
+        imgH+=await measureImgH(it.composite||it.url,dw);
+      }
+      return Math.ceil((Math.max(120,lines.length*76)+48)*1.15)+imgH+28;
     }
     return 80;
   }));
